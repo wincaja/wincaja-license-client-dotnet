@@ -14,7 +14,7 @@ namespace WincajaLicenseManager.Core
 
         public ApiClient(string baseUrl = null)
         {
-            _baseUrl = baseUrl ?? "http://localhost:5173/api/licenses";
+            _baseUrl = baseUrl ?? "https://licencias.wincaja.mx/api/licenses";
             _httpClient = new HttpClient();
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
@@ -38,8 +38,16 @@ namespace WincajaLicenseManager.Core
                 var json = JsonConvert.SerializeObject(request, jsonSettings);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"Sending request to: {_baseUrl}/activate");
+                System.Diagnostics.Debug.WriteLine($"Request body: {json}");
+
                 var response = await _httpClient.PostAsync($"{_baseUrl}/activate", content);
                 var responseContent = await response.Content.ReadAsStringAsync();
+
+                // Debug output
+                System.Diagnostics.Debug.WriteLine($"Response status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"Response body: {responseContent}");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -52,11 +60,11 @@ namespace WincajaLicenseManager.Core
                     try
                     {
                         var errorResponse = JsonConvert.DeserializeObject<ActivationResponse>(responseContent);
-                        return errorResponse ?? new ActivationResponse { Success = false, Error = $"Server error: {response.StatusCode}" };
+                        return errorResponse ?? new ActivationResponse { Success = false, Error = $"Server error: {response.StatusCode} - {responseContent}" };
                     }
                     catch
                     {
-                        return new ActivationResponse { Success = false, Error = $"Server error: {response.StatusCode}" };
+                        return new ActivationResponse { Success = false, Error = $"Server error: {response.StatusCode} - {responseContent}" };
                     }
                 }
             }

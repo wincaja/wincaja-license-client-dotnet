@@ -15,7 +15,7 @@ class TestLicenseActivation
             var licenseManager = new WincajaLicenseManagerImpl();
 
             // Test specific license key
-            string licenseKey = "23PB-NY5B-MBBP-O1XY-W1K6";
+            string licenseKey = "2OMG-Q9G9-2ACW-O9CZ-6TQS";
             Console.WriteLine($"Attempting to activate license: {licenseKey}");
             
             // First get hardware fingerprint

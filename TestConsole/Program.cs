@@ -18,18 +18,29 @@ namespace TestConsole
                 IWincajaLicenseManager licenseManager = new WincajaLicenseManagerImpl();
 
                 // Test the specific license key first
-                string testLicenseKey = "LK2H-A28M-BQDU-SH5K-XWZ1";
+                string testLicenseKey = "IHGR-CMG5-EXZR-4XZH-Q8UF";
                 Console.WriteLine($"Testing license key: {testLicenseKey}");
                 Console.WriteLine("=====================================\n");
 
-                // Get hardware fingerprint first
-                Console.WriteLine("1. Getting hardware fingerprint...");
+                // First get hardware fingerprint
+                Console.WriteLine("\n1. Getting hardware fingerprint...");
                 var fingerprintResult = licenseManager.GetHardwareFingerprint();
                 var fingerprintJson = JObject.Parse(fingerprintResult);
-                Console.WriteLine($"Fingerprint success: {fingerprintJson["success"]}");
+                Console.WriteLine($"Fingerprint Result: {fingerprintJson["success"]}");
                 if (fingerprintJson["success"].Value<bool>())
                 {
-                    Console.WriteLine($"Hardware fingerprint: {fingerprintJson["fingerprint"]}");
+                    Console.WriteLine($"Hardware Fingerprint: {fingerprintJson["fingerprint"]}");
+                    
+                    // Display detailed hardware components
+                    if (fingerprintJson["hardware"] != null)
+                    {
+                        Console.WriteLine("\nHardware Components:");
+                        Console.WriteLine(fingerprintJson["hardware"].ToString(Formatting.Indented));
+                    }
+                    else
+                    {
+                        Console.WriteLine("\nWarning: Hardware components information is missing!");
+                    }
                 }
                 Console.WriteLine();
 
@@ -127,7 +138,13 @@ namespace TestConsole
             
             if (json["success"]?.Value<bool>() == true)
             {
-                Console.WriteLine($"\nFingerprint: {json["fingerprint"]}");
+                Console.WriteLine($"\nFingerprint Hash: {json["fingerprint"]}");
+                
+                if (json["hardware"] != null)
+                {
+                    Console.WriteLine("\nDetailed Hardware Components:");
+                    Console.WriteLine(json["hardware"].ToString(Formatting.Indented));
+                }
             }
         }
 

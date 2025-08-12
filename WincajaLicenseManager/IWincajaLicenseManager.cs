@@ -23,6 +23,13 @@ namespace WincajaLicenseManager
         string ValidateLicense();
 
         /// <summary>
+        /// Forces an immediate online validation, ignoring the grace period.
+        /// Useful to reflect server-side changes (e.g., deactivation) right away.
+        /// </summary>
+        /// <returns>JSON string with validation result</returns>
+        string ValidateLicenseForceOnline();
+
+        /// <summary>
         /// Gets the current license status without performing a full validation.
         /// </summary>
         /// <returns>JSON string with license status</returns>

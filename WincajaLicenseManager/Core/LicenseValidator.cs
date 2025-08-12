@@ -17,9 +17,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwKU3QZBKfEw+A5p6nAsO
 qerCOWDFhvqBRuqgPvSKKDIiU7I0n5nzWqS2TpzQkPL0p2dWvZ5rFCy1v3f2h8Lx
 WZgvXZG5xOc6jL6w0xQ7LnQ5qe5Y1M5xQ9vQ2Z5qJ7hxFL2hzU2j3tYm8z7xQZYR
 xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
-2h3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFLYR2h
-3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQZgY3
-Lz8xQZ2hxFL5h3Y2j8wIDAQAB
+2h3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQZgY3Lz8xQZ2hxFL5h3Y2j8wIDAQAB
 -----END PUBLIC KEY-----";
 
         public LicenseValidator(int gracePeriodDays = 7)
@@ -91,11 +89,25 @@ Lz8xQZ2hxFL5h3Y2j8wIDAQAB
                 // Perform online validation if needed and requested
                 if (performOnlineCheck && status.RequiresOnlineValidation)
                 {
-                    var onlineResult = PerformOnlineValidation(storedLicense);
+                    var onlineResult = PerformOnlineValidationHardware(storedLicense);
                     if (onlineResult != null)
                     {
-                        // Update stored license with server response
-                        if (onlineResult.Success && onlineResult.Data != null)
+                        // Handle new server response format
+                        if (onlineResult.Valid && onlineResult.License != null)
+                        {
+                            storedLicense.LastValidation = DateTime.UtcNow;
+                            if (onlineResult.License.ExpiresAt.HasValue)
+                            {
+                                storedLicense.ExpiresAt = onlineResult.License.ExpiresAt;
+                            }
+                            _storage.SaveLicense(storedLicense);
+
+                            status.LastValidation = storedLicense.LastValidation;
+                            status.RequiresOnlineValidation = false;
+                            status.GraceDaysRemaining = _gracePeriodDays;
+                        }
+                        // Handle legacy format
+                        else if (onlineResult.Success && onlineResult.Data != null)
                         {
                             storedLicense.LastValidation = DateTime.UtcNow;
                             if (onlineResult.Data.ExpiresAt.HasValue)
@@ -104,21 +116,18 @@ Lz8xQZ2hxFL5h3Y2j8wIDAQAB
                             }
                             _storage.SaveLicense(storedLicense);
 
-                            // Update status
                             status.LastValidation = storedLicense.LastValidation;
                             status.RequiresOnlineValidation = false;
                             status.GraceDaysRemaining = _gracePeriodDays;
                         }
-                        else if (!onlineResult.Success)
+                        else if (!onlineResult.Valid && !onlineResult.Success)
                         {
-                            // Server rejected the license
                             status.IsValid = false;
                             status.Status = "invalid";
                             status.Error = onlineResult.Error ?? "License validation failed";
                             return status;
                         }
                     }
-                    // If online validation fails due to network issues, continue with grace period
                 }
 
                 // License is valid
@@ -137,19 +146,123 @@ Lz8xQZ2hxFL5h3Y2j8wIDAQAB
             }
         }
 
-        private ValidationResponse PerformOnlineValidation(StoredLicense license)
+        public LicenseStatus ForceOnlineValidation()
+        {
+            try
+            {
+                var storedLicense = _storage.LoadLicense<StoredLicense>();
+                if (storedLicense == null)
+                {
+                    return new LicenseStatus
+                    {
+                        IsValid = false,
+                        Status = "not_activated",
+                        Error = "No license found. Please activate your license."
+                    };
+                }
+
+                using (var apiClient = new ApiClient())
+                {
+                    var fp = !string.IsNullOrWhiteSpace(storedLicense.ServerHardwareFingerprint) ? storedLicense.ServerHardwareFingerprint : storedLicense.HardwareFingerprint;
+                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId);
+
+                    var status = new LicenseStatus
+                    {
+                        LicenseKey = MaskLicenseKey(storedLicense.LicenseKey),
+                        ExpiresAt = storedLicense.ExpiresAt,
+                        LastValidation = storedLicense.LastValidation
+                    };
+
+                    if (serverResult == null)
+                    {
+                        status.IsValid = false;
+                        status.Status = "network_error";
+                        status.Error = "No response from server";
+                        return status;
+                    }
+
+                    // Handle new server response format
+                    if (serverResult.Valid && serverResult.License != null)
+                    {
+                        // Update stored license timestamps and expiration
+                        storedLicense.LastValidation = DateTime.UtcNow;
+                        if (serverResult.License.ExpiresAt.HasValue)
+                        {
+                            storedLicense.ExpiresAt = serverResult.License.ExpiresAt;
+                        }
+                        _storage.SaveLicense(storedLicense);
+
+                        status.LastValidation = storedLicense.LastValidation;
+                        status.GraceDaysRemaining = _gracePeriodDays;
+                        status.RequiresOnlineValidation = false;
+
+                        // Use server validity
+                        status.IsValid = serverResult.Valid;
+                        status.Status = serverResult.License.Status ?? "active";
+                        status.Error = null;
+                        status.DaysUntilExpiration = storedLicense.ExpiresAt.HasValue
+                            ? Math.Max(0, (int)(storedLicense.ExpiresAt.Value - DateTime.UtcNow).TotalDays)
+                            : int.MaxValue;
+
+                        return status;
+                    }
+                    // Handle legacy format for backward compatibility
+                    else if (serverResult.Success && serverResult.Data != null)
+                    {
+                        storedLicense.LastValidation = DateTime.UtcNow;
+                        if (serverResult.Data.ExpiresAt.HasValue)
+                        {
+                            storedLicense.ExpiresAt = serverResult.Data.ExpiresAt;
+                        }
+                        _storage.SaveLicense(storedLicense);
+
+                        status.LastValidation = storedLicense.LastValidation;
+                        status.GraceDaysRemaining = _gracePeriodDays;
+                        status.RequiresOnlineValidation = false;
+                        status.IsValid = serverResult.Data.Valid;
+                        status.Status = serverResult.Data.Status ?? (serverResult.Data.Valid ? "active" : "invalid");
+                        status.Error = serverResult.Data.Valid ? null : (serverResult.Data.Message ?? serverResult.Error);
+                        status.DaysUntilExpiration = storedLicense.ExpiresAt.HasValue
+                            ? Math.Max(0, (int)(storedLicense.ExpiresAt.Value - DateTime.UtcNow).TotalDays)
+                            : int.MaxValue;
+
+                        return status;
+                    }
+
+                    // Server indicated invalid or error
+                    status.IsValid = false;
+                    status.Status = "invalid";
+                    status.Error = serverResult.Error ?? "License is not valid";
+                    status.RequiresOnlineValidation = false;
+                    status.GraceDaysRemaining = _gracePeriodDays;
+                    status.DaysUntilExpiration = 0;
+                    return status;
+                }
+            }
+            catch (Exception ex)
+            {
+                return new LicenseStatus
+                {
+                    IsValid = false,
+                    Status = "error",
+                    Error = $"Force validation error: {ex.Message}"
+                };
+            }
+        }
+
+        private ValidationResponse PerformOnlineValidationHardware(StoredLicense license)
         {
             try
             {
                 using (var apiClient = new ApiClient())
                 {
-                    var hardwareInfo = _fingerprinter.GetSimplifiedHardwareInfo();
-                    return apiClient.ValidateLicense(license.LicenseKey, license.ActivationId, hardwareInfo);
+                    // Prefer server fingerprint if available, fall back to local
+                    var fp = !string.IsNullOrWhiteSpace(license.ServerHardwareFingerprint) ? license.ServerHardwareFingerprint : license.HardwareFingerprint;
+                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId);
                 }
             }
             catch
             {
-                // Network or API errors are handled gracefully
                 return null;
             }
         }
@@ -199,7 +312,8 @@ Lz8xQZ2hxFL5h3Y2j8wIDAQAB
                     {
                         LicenseKey = licenseKey,
                         ActivationId = response.ActivationId,
-                        HardwareFingerprint = fingerprint, // Store our calculated fingerprint
+                        HardwareFingerprint = fingerprint, // local calculated fingerprint
+                        ServerHardwareFingerprint = string.IsNullOrWhiteSpace(response.HardwareFingerprint) ? fingerprint : response.HardwareFingerprint,
                         ActivatedAt = DateTime.TryParse(response.ActivatedAt, out var activatedAt) ? activatedAt : DateTime.UtcNow,
                         ExpiresAt = null, // We'll need to get this from a separate validation call if needed
                         LastValidation = DateTime.UtcNow,

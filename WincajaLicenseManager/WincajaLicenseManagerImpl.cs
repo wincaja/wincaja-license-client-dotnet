@@ -103,6 +103,39 @@ namespace WincajaLicenseManager
             }
         }
 
+        public string ValidateLicenseForceOnline()
+        {
+            try
+            {
+                // Force an immediate online validation regardless of grace period
+                var status = _validator.ForceOnlineValidation();
+
+                var result = new
+                {
+                    success = status.IsValid,
+                    status = status.Status,
+                    licenseKey = status.LicenseKey,
+                    expiresAt = status.ExpiresAt?.ToString("yyyy-MM-dd"),
+                    daysUntilExpiration = status.DaysUntilExpiration,
+                    lastValidation = status.LastValidation.ToString("yyyy-MM-dd HH:mm:ss"),
+                    graceDaysRemaining = status.GraceDaysRemaining,
+                    requiresOnlineValidation = false,
+                    error = status.Error
+                };
+
+                return JsonConvert.SerializeObject(result);
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    success = false,
+                    status = "error",
+                    error = $"Validation error: {ex.Message}"
+                });
+            }
+        }
+
         public string GetLicenseStatus()
         {
             try

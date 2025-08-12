@@ -17,6 +17,43 @@ namespace TestConsole
                 // Create the license manager instance
                 IWincajaLicenseManager licenseManager = new WincajaLicenseManagerImpl();
 
+                // Non-interactive modes
+                if (args != null && args.Length > 0)
+                {
+                    // Arg[0] can be a license key or a flag
+                    var firstArg = args[0].Trim();
+                    if (string.Equals(firstArg, "--force-validate", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Forcing online validation (non-interactive)...");
+                        var result = licenseManager.ValidateLicenseForceOnline();
+                        var json = JObject.Parse(result);
+                        Console.WriteLine(json.ToString(Formatting.Indented));
+                        return;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(firstArg))
+                    {
+                        var argKey = firstArg;
+                        Console.WriteLine($"Activating license from argument: {argKey}");
+
+                        // Optional: show fingerprint for context
+                        var fp = JObject.Parse(licenseManager.GetHardwareFingerprint());
+                        Console.WriteLine($"Fingerprint Result: {fp["success"]}");
+                        if (fp["success"].Value<bool>())
+                        {
+                            Console.WriteLine($"Hardware Fingerprint: {fp["fingerprint"]}");
+                        }
+
+                        var activationResultArg = licenseManager.ActivateLicense(argKey);
+                        var activationJsonArg = JObject.Parse(activationResultArg);
+                        Console.WriteLine("Activation Result:");
+                        Console.WriteLine(activationJsonArg.ToString(Formatting.Indented));
+
+                        // Exit after single-shot activation flow
+                        return;
+                    }
+                }
+
                 // Test the specific license key first
                 string testLicenseKey = "IHGR-CMG5-EXZR-4XZH-Q8UF";
                 Console.WriteLine($"Testing license key: {testLicenseKey}");
@@ -82,7 +119,8 @@ namespace TestConsole
                     Console.WriteLine("3. Validate License");
                     Console.WriteLine("4. Get License Status");
                     Console.WriteLine("5. Deactivate License");
-                    Console.WriteLine("6. Exit");
+                    Console.WriteLine("6. Force Online Validation");
+                    Console.WriteLine("7. Exit");
                     Console.Write("\nSelect option: ");
 
                     var option = Console.ReadLine();
@@ -110,6 +148,10 @@ namespace TestConsole
                             break;
 
                         case "6":
+                            ForceOnlineValidation(licenseManager);
+                            break;
+
+                        case "7":
                             return;
 
                         default:
@@ -199,6 +241,14 @@ namespace TestConsole
             var result = licenseManager.DeactivateLicense();
             var json = JObject.Parse(result);
             
+            Console.WriteLine($"\nResult: {json.ToString(Formatting.Indented)}");
+        }
+
+        static void ForceOnlineValidation(IWincajaLicenseManager licenseManager)
+        {
+            Console.WriteLine("\nForcing online validation...");
+            var result = licenseManager.ValidateLicenseForceOnline();
+            var json = JObject.Parse(result);
             Console.WriteLine($"\nResult: {json.ToString(Formatting.Indented)}");
         }
     }

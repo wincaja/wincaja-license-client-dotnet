@@ -53,9 +53,44 @@ namespace WincajaLicenseManager.Models
 
     public class ValidationResponse
     {
+        public bool Valid { get; set; }
+        public LicenseData License { get; set; }
+        public ValidationInfo Validation { get; set; }
         public bool Success { get; set; }
         public ValidationData Data { get; set; }
         public string Error { get; set; }
+    }
+
+    public class LicenseData
+    {
+        public string LicenseId { get; set; }
+        public string LicenseKey { get; set; }
+        public string ClientEmail { get; set; }
+        public string ProductId { get; set; }
+        public string ProductVersion { get; set; }
+        public string LicenseType { get; set; }
+        public string Status { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+        public List<Feature> Features { get; set; }
+        public Dictionary<string, object> Constraints { get; set; }
+    }
+
+    public class Feature
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public bool Enabled { get; set; }
+        public Dictionary<string, object> Metadata { get; set; }
+    }
+
+    public class ValidationInfo
+    {
+        public bool SignatureValid { get; set; }
+        public bool? HardwareValid { get; set; }
+        public object HardwareValidationDetails { get; set; }
+        public bool ActivationLimitExceeded { get; set; }
+        public int CurrentActivations { get; set; }
+        public int ActivationLimit { get; set; }
     }
 
     public class DeactivationResponse
@@ -82,6 +117,7 @@ namespace WincajaLicenseManager.Models
         public string LicenseKey { get; set; }
         public string ActivationId { get; set; }
         public string HardwareFingerprint { get; set; }
+        public string ServerHardwareFingerprint { get; set; }
         public DateTime ActivatedAt { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public DateTime LastValidation { get; set; }

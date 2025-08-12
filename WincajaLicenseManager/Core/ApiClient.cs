@@ -14,7 +14,7 @@ namespace WincajaLicenseManager.Core
 
         public ApiClient(string baseUrl = null)
         {
-            _baseUrl = baseUrl ?? "https://licencias.wincaja.mx/api/licenses";
+            _baseUrl = baseUrl ?? "http://localhost:5173/api/licenses";
             _httpClient = new HttpClient();
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
@@ -160,6 +160,77 @@ namespace WincajaLicenseManager.Core
             try
             {
                 var task = Task.Run(async () => await ValidateLicenseAsync(licenseKey, activationId, hardwareInfo));
+                return task.Result;
+            }
+            catch (AggregateException ex)
+            {
+                var innerEx = ex.InnerException;
+                return new ValidationResponse { Success = false, Error = innerEx?.Message ?? "Validation failed" };
+            }
+        }
+
+        public async Task<ValidationResponse> ValidateLicenseHardwareAsync(string licenseKey, string hardwareFingerprint, string activationId = null)
+        {
+            try
+            {
+                var request = new
+                {
+                    licenseKey = licenseKey,
+                    includeHardwareCheck = true,
+                    hardwareFingerprint = hardwareFingerprint,
+                    activationId = activationId
+                };
+
+                // Use camelCase naming
+                var jsonSettings = new JsonSerializerSettings
+                {
+                    ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
+                };
+                var json = JsonConvert.SerializeObject(request, jsonSettings);
+                Console.WriteLine($"[DEBUG] Sending validation request: {json}");
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync($"{_baseUrl}/validate", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[DEBUG] Server response ({response.StatusCode}): {responseContent}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent);
+                    return result ?? new ValidationResponse { Success = false, Error = "Invalid response from server" };
+                }
+                else
+                {
+                    try
+                    {
+                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent);
+                        return errorResponse ?? new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}" };
+                    }
+                    catch
+                    {
+                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}" };
+                    }
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                return new ValidationResponse { Success = false, Error = "Request timed out" };
+            }
+            catch (HttpRequestException ex)
+            {
+                return new ValidationResponse { Success = false, Error = $"Network error: {ex.Message}" };
+            }
+            catch (Exception ex)
+            {
+                return new ValidationResponse { Success = false, Error = $"Unexpected error: {ex.Message}" };
+            }
+        }
+
+        public ValidationResponse ValidateLicenseHardware(string licenseKey, string hardwareFingerprint, string activationId = null)
+        {
+            try
+            {
+                var task = Task.Run(async () => await ValidateLicenseHardwareAsync(licenseKey, hardwareFingerprint, activationId));
                 return task.Result;
             }
             catch (AggregateException ex)

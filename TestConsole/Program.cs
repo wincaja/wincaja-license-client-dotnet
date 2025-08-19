@@ -22,6 +22,7 @@ namespace TestConsole
                 {
                     // Arg[0] can be a license key or a flag
                     var firstArg = args[0].Trim();
+                    
                     if (string.Equals(firstArg, "--force-validate", StringComparison.OrdinalIgnoreCase))
                     {
                         Console.WriteLine("Forcing online validation (non-interactive)...");
@@ -30,8 +31,51 @@ namespace TestConsole
                         Console.WriteLine(json.ToString(Formatting.Indented));
                         return;
                     }
+                    
+                    if (string.Equals(firstArg, "--validate", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Validating license (non-interactive)...");
+                        var result = licenseManager.ValidateLicense();
+                        var json = JObject.Parse(result);
+                        Console.WriteLine(json.ToString(Formatting.Indented));
+                        return;
+                    }
+                    
+                    if (string.Equals(firstArg, "--status", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Getting license status (non-interactive)...");
+                        var result = licenseManager.GetLicenseStatus();
+                        var json = JObject.Parse(result);
+                        Console.WriteLine(json.ToString(Formatting.Indented));
+                        return;
+                    }
+                    
+                    if (string.Equals(firstArg, "--fingerprint", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Getting hardware fingerprint (non-interactive)...");
+                        var result = licenseManager.GetHardwareFingerprint();
+                        var json = JObject.Parse(result);
+                        Console.WriteLine(json.ToString(Formatting.Indented));
+                        return;
+                    }
+                    
+                    if (string.Equals(firstArg, "--deactivate", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Deactivating license (non-interactive)...");
+                        var result = licenseManager.DeactivateLicense();
+                        var json = JObject.Parse(result);
+                        Console.WriteLine(json.ToString(Formatting.Indented));
+                        return;
+                    }
+                    
+                    if (string.Equals(firstArg, "--non-interactive", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Running all tests (non-interactive)...");
+                        RunAllTests(licenseManager);
+                        return;
+                    }
 
-                    if (!string.IsNullOrWhiteSpace(firstArg))
+                    if (!string.IsNullOrWhiteSpace(firstArg) && !firstArg.StartsWith("--"))
                     {
                         var argKey = firstArg;
                         Console.WriteLine($"Activating license from argument: {argKey}");
@@ -55,7 +99,7 @@ namespace TestConsole
                 }
 
                 // Test the specific license key first
-                string testLicenseKey = "IHGR-CMG5-EXZR-4XZH-Q8UF";
+                string testLicenseKey = "4ZL8-ORKG-JYGV-1112-T74T";
                 Console.WriteLine($"Testing license key: {testLicenseKey}");
                 Console.WriteLine("=====================================\n");
 
@@ -166,8 +210,35 @@ namespace TestConsole
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
             }
 
-            Console.WriteLine("\nPress any key to exit...");
-            Console.ReadKey();
+            // Only wait for key press if no arguments provided (interactive mode)
+            if (args == null || args.Length == 0)
+            {
+                Console.WriteLine("\nPress any key to exit...");
+                Console.ReadKey();
+            }
+        }
+
+        static void RunAllTests(IWincajaLicenseManager licenseManager)
+        {
+            Console.WriteLine("=== Running All Tests ===\n");
+            
+            Console.WriteLine("1. Hardware Fingerprint Test:");
+            GetHardwareFingerprint(licenseManager);
+            Console.WriteLine();
+            
+            Console.WriteLine("2. License Status Test:");
+            GetLicenseStatus(licenseManager);
+            Console.WriteLine();
+            
+            Console.WriteLine("3. License Validation Test:");
+            ValidateLicense(licenseManager);
+            Console.WriteLine();
+            
+            Console.WriteLine("4. Force Online Validation Test:");
+            ForceOnlineValidation(licenseManager);
+            Console.WriteLine();
+            
+            Console.WriteLine("=== All Tests Completed ===");
         }
 
         static void GetHardwareFingerprint(IWincajaLicenseManager licenseManager)

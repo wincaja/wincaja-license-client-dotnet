@@ -228,20 +228,9 @@ namespace WincajaLicenseManager.Core
                 sb.AppendLine($"CPU:{info.Cpu.Manufacturer}|{info.Cpu.Brand}|{info.Cpu.Speed}|{info.Cpu.Cores}");
             }
 
-            // Network - sort by MAC address for consistency
-            if (info.Network != null)
-            {
-                var sortedMacs = info.Network
-                    .Where(n => !string.IsNullOrEmpty(n.MacAddress))
-                    .Select(n => n.MacAddress.ToUpper())
-                    .OrderBy(m => m)
-                    .ToList();
-                
-                foreach (var mac in sortedMacs)
-                {
-                    sb.AppendLine($"NET:{mac}");
-                }
-            }
+            // NOTE: Network interfaces are excluded from fingerprint to prevent hardware mismatch
+            // when users switch between ethernet/WiFi or connect/disconnect network adapters.
+            // This ensures stable license validation across network configuration changes.
 
             // Disks - already sorted by name
             if (info.Disks != null)

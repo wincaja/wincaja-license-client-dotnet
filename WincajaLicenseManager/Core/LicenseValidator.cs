@@ -122,6 +122,22 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         }
                         else if (!onlineResult.Valid && !onlineResult.Success)
                         {
+                            // Check if this is a revoked license
+                            bool isRevoked = IsRevocationResponse(onlineResult);
+                            if (isRevoked)
+                            {
+                                // CRITICAL: Clear cache immediately for revoked licenses
+                                _storage.DeleteLicense();
+                                
+                                status.IsValid = false;
+                                status.Status = "revoked";
+                                status.Error = "License has been revoked by administrator";
+                                status.RequiresOnlineValidation = false;
+                                status.GraceDaysRemaining = 0;
+                                return status;
+                            }
+                            
+                            // For other validation failures, return invalid but keep cache
                             status.IsValid = false;
                             status.Status = "invalid";
                             status.Error = onlineResult.Error ?? "License validation failed";
@@ -230,6 +246,22 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     }
 
                     // Server indicated invalid or error
+                    bool isRevoked = IsRevocationResponse(serverResult);
+                    if (isRevoked)
+                    {
+                        // CRITICAL: Clear cache immediately for revoked licenses
+                        _storage.DeleteLicense();
+                        
+                        status.IsValid = false;
+                        status.Status = "revoked";
+                        status.Error = "License has been revoked by administrator";
+                        status.RequiresOnlineValidation = false;
+                        status.GraceDaysRemaining = 0;
+                        status.DaysUntilExpiration = 0;
+                        return status;
+                    }
+                    
+                    // For other validation failures
                     status.IsValid = false;
                     status.Status = "invalid";
                     status.Error = serverResult.Error ?? "License is not valid";
@@ -265,6 +297,49 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
             {
                 return null;
             }
+        }
+
+        private bool IsRevocationResponse(ValidationResponse response)
+        {
+            if (response == null) return false;
+            
+            // Check for explicit revocation indicators
+            if (response.License != null && response.License.Status != null)
+            {
+                var status = response.License.Status.ToLowerInvariant();
+                if (status == "revoked" || status == "suspended" || status == "disabled")
+                    return true;
+            }
+            
+            // Check legacy format
+            if (response.Data != null && response.Data.Status != null)
+            {
+                var status = response.Data.Status.ToLowerInvariant();
+                if (status == "revoked" || status == "suspended" || status == "disabled")
+                    return true;
+            }
+            
+            // Check error message for revocation keywords
+            if (!string.IsNullOrEmpty(response.Error))
+            {
+                var errorLower = response.Error.ToLowerInvariant();
+                if (errorLower.Contains("revoked") || 
+                    errorLower.Contains("suspended") || 
+                    errorLower.Contains("disabled") ||
+                    errorLower.Contains("deactivated") ||
+                    errorLower.Contains("unauthorized") && errorLower.Contains("license"))
+                    return true;
+            }
+            
+            // Check for UNAUTHORIZED status code with license-related message
+            if (response.StatusCode == 401 && !string.IsNullOrEmpty(response.Error))
+            {
+                var errorLower = response.Error.ToLowerInvariant();
+                if (errorLower.Contains("license"))
+                    return true;
+            }
+            
+            return false;
         }
 
         private bool CompareFingerprints(string stored, string current)

@@ -59,6 +59,7 @@ namespace WincajaLicenseManager.Models
         public bool Success { get; set; }
         public ValidationData Data { get; set; }
         public string Error { get; set; }
+        public int StatusCode { get; set; }
     }
 
     public class LicenseData

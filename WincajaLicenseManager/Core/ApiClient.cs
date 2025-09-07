@@ -132,11 +132,25 @@ namespace WincajaLicenseManager.Core
                     try
                     {
                         var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent);
-                        return errorResponse ?? new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}" };
+                        if (errorResponse != null)
+                        {
+                            errorResponse.StatusCode = (int)response.StatusCode;
+                            return errorResponse;
+                        }
+                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}", StatusCode = (int)response.StatusCode };
                     }
                     catch
                     {
-                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}" };
+                        // Check if this is a 401 Unauthorized with license-related error
+                        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && responseContent.ToLowerInvariant().Contains("license"))
+                        {
+                            return new ValidationResponse { 
+                                Success = false, 
+                                Error = "License has been revoked", 
+                                StatusCode = 401 
+                            };
+                        }
+                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}", StatusCode = (int)response.StatusCode };
                     }
                 }
             }
@@ -204,11 +218,25 @@ namespace WincajaLicenseManager.Core
                     try
                     {
                         var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent);
-                        return errorResponse ?? new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}" };
+                        if (errorResponse != null)
+                        {
+                            errorResponse.StatusCode = (int)response.StatusCode;
+                            return errorResponse;
+                        }
+                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}", StatusCode = (int)response.StatusCode };
                     }
                     catch
                     {
-                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}" };
+                        // Check if this is a 401 Unauthorized with license-related error
+                        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized && responseContent.ToLowerInvariant().Contains("license"))
+                        {
+                            return new ValidationResponse { 
+                                Success = false, 
+                                Error = "License has been revoked", 
+                                StatusCode = 401 
+                            };
+                        }
+                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}", StatusCode = (int)response.StatusCode };
                     }
                 }
             }

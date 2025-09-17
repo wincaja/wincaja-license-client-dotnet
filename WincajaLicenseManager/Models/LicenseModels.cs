@@ -146,6 +146,7 @@ namespace WincajaLicenseManager.Models
         public int GraceDaysRemaining { get; set; }
         public bool RequiresOnlineValidation { get; set; }
         public string Error { get; set; }
+        public List<LicenseFeature> Features { get; set; } = new List<LicenseFeature>();
     }
 
     public enum DeactivationType

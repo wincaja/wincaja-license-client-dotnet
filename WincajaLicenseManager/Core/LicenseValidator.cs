@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using WincajaLicenseManager.Models;
@@ -220,6 +221,22 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                             ? Math.Max(0, (int)(storedLicense.ExpiresAt.Value - DateTime.UtcNow).TotalDays)
                             : int.MaxValue;
 
+                        // Extract features from server response
+                        if (serverResult.License.Features != null)
+                        {
+                            status.Features = serverResult.License.Features.Select(f => new LicenseFeature
+                            {
+                                Id = f.Id,
+                                Name = f.Name,
+                                Enabled = f.Enabled,
+                                Metadata = f.Metadata ?? new Dictionary<string, object>()
+                            }).ToList();
+                        }
+                        else if (serverResult.Features != null)
+                        {
+                            status.Features = serverResult.Features;
+                        }
+
                         return status;
                     }
                     // Handle legacy format for backward compatibility
@@ -241,6 +258,12 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         status.DaysUntilExpiration = storedLicense.ExpiresAt.HasValue
                             ? Math.Max(0, (int)(storedLicense.ExpiresAt.Value - DateTime.UtcNow).TotalDays)
                             : int.MaxValue;
+
+                        // Extract features from server response (legacy path)
+                        if (serverResult.Features != null)
+                        {
+                            status.Features = serverResult.Features;
+                        }
 
                         return status;
                     }

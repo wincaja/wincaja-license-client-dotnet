@@ -60,6 +60,7 @@ namespace WincajaLicenseManager.Models
         public ValidationData Data { get; set; }
         public string Error { get; set; }
         public int StatusCode { get; set; }
+        public List<LicenseFeature> Features { get; set; } = new List<LicenseFeature>();
     }
 
     public class LicenseData
@@ -82,6 +83,14 @@ namespace WincajaLicenseManager.Models
         public string Name { get; set; }
         public bool Enabled { get; set; }
         public Dictionary<string, object> Metadata { get; set; }
+    }
+
+    public class LicenseFeature
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public bool Enabled { get; set; }
+        public Dictionary<string, object> Metadata { get; set; } = new Dictionary<string, object>();
     }
 
     public class ValidationInfo

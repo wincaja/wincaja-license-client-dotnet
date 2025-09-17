@@ -120,8 +120,9 @@ namespace WincajaLicenseManager
                     lastValidation = status.LastValidation.ToString("yyyy-MM-dd HH:mm:ss"),
                     graceDaysRemaining = status.GraceDaysRemaining,
                     requiresOnlineValidation = false,
-                    features = status.Features,
-                    error = status.Error
+                    error = status.Error,
+                    features = status.features
+
                 };
 
                 return JsonConvert.SerializeObject(result);

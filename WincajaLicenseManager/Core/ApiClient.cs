@@ -14,7 +14,7 @@ namespace WincajaLicenseManager.Core
 
         public ApiClient(string baseUrl = null)
         {
-            _baseUrl = baseUrl ?? "http://localhost:5173/api/licenses";
+            _baseUrl = baseUrl ?? "https://licencias.wincaja.mx/api/licenses";
             _httpClient = new HttpClient();
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }

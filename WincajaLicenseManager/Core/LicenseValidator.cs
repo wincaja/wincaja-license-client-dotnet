@@ -221,7 +221,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                             ? Math.Max(0, (int)(storedLicense.ExpiresAt.Value - DateTime.UtcNow).TotalDays)
                             : int.MaxValue;
 
-
+                        status.ProductVersion = serverResult.License.ProductVersion;
                         //features
                         status.features = serverResult.License.Features;
                        

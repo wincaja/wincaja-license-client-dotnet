@@ -137,7 +137,7 @@ namespace WincajaLicenseManager.Models
         public int GraceDaysRemaining { get; set; }
         public bool RequiresOnlineValidation { get; set; }
         public string Error { get; set; }
-
+        public string ProductVersion { get; set; }
         public List<Feature> features { get; set; }
     }
 

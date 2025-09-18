@@ -61,6 +61,7 @@ namespace WincajaLicenseManager.Core
             public string Uuid { get; set; }
             public string Manufacturer { get; set; }
             public string Model { get; set; }
+            public string MachineName { get; set; }
         }
 
         public HardwareInfo GetHardwareInfo()
@@ -211,10 +212,12 @@ namespace WincajaLicenseManager.Core
                     sysInfo.Uuid = obj["UUID"]?.ToString() ?? "";
                     sysInfo.Manufacturer = obj["Vendor"]?.ToString() ?? "";
                     sysInfo.Model = obj["Name"]?.ToString() ?? "";
+              
                     break;
                 }
             }
 
+            sysInfo.MachineName = Environment.MachineName;
             return sysInfo;
         }
 
@@ -257,7 +260,7 @@ namespace WincajaLicenseManager.Core
             // System
             if (info.System != null)
             {
-                sb.AppendLine($"SYS:{info.System.Uuid}|{info.System.Manufacturer}|{info.System.Model}");
+                sb.AppendLine($"SYS:{info.System.Uuid}|{info.System.Manufacturer}|{info.System.Model}|{info.System.MachineName}");
             }
 
             return sb.ToString();
@@ -347,7 +350,8 @@ namespace WincajaLicenseManager.Core
                 {
                     ["uuid"] = info.System.Uuid,
                     ["manufacturer"] = info.System.Manufacturer,
-                    ["model"] = info.System.Model
+                    ["model"] = info.System.Model,
+                    ["machineName"] = info.System.MachineName
                 };
             }
 

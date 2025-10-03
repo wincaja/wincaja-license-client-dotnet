@@ -139,6 +139,12 @@ namespace WincajaLicenseManager.Models
         public string Error { get; set; }
         public string ProductVersion { get; set; }
         public List<Feature> features { get; set; }
+        
+        // Activation limit information
+        public bool ActivationLimitExceeded { get; set; }
+        public int CurrentActivations { get; set; }
+        public int ActivationLimit { get; set; }
+        public string LicenseStatusFromServer { get; set; }
     }
 
     public enum DeactivationType

@@ -107,8 +107,10 @@ namespace WincajaLicenseManager
         {
             try
             {
+                Console.WriteLine("[DEBUG] ValidateLicenseForceOnline() - START");
                 // Force an immediate online validation regardless of grace period
                 var status = _validator.ForceOnlineValidation();
+                Console.WriteLine($"[DEBUG] ValidateLicenseForceOnline() - Status received: IsValid={status.IsValid}, ActivationLimitExceeded={status.ActivationLimitExceeded}");
 
                 var result = new
                 {
@@ -123,12 +125,17 @@ namespace WincajaLicenseManager
                     features = status.features,
                     productversion = status.ProductVersion,
                     error = status.Error,
-              
                     
-
+                    // Activation limit information
+                    activationLimitExceeded = status.ActivationLimitExceeded,
+                    currentActivations = status.CurrentActivations,
+                    activationLimit = status.ActivationLimit,
+                    licenseStatusFromServer = status.LicenseStatusFromServer
                 };
 
-                return JsonConvert.SerializeObject(result);
+                var jsonResult = JsonConvert.SerializeObject(result);
+                Console.WriteLine($"[DEBUG] ValidateLicenseForceOnline() - JSON result: {jsonResult}");
+                return jsonResult;
             }
             catch (Exception ex)
             {

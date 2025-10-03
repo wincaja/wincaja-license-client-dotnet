@@ -166,9 +166,11 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
         {
             try
             {
+                Console.WriteLine("[DEBUG] ForceOnlineValidation() - START");
                 var storedLicense = _storage.LoadLicense<StoredLicense>();
                 if (storedLicense == null)
                 {
+                    Console.WriteLine("[DEBUG] ForceOnlineValidation() - No stored license found");
                     return new LicenseStatus
                     {
                         IsValid = false,
@@ -177,10 +179,15 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     };
                 }
 
+                Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Stored license found: {MaskLicenseKey(storedLicense.LicenseKey)}");
+                Console.WriteLine($"[DEBUG] ForceOnlineValidation() - About to call server with activationId: {storedLicense.ActivationId}");
+
                 using (var apiClient = new ApiClient())
                 {
                     var fp = !string.IsNullOrWhiteSpace(storedLicense.ServerHardwareFingerprint) ? storedLicense.ServerHardwareFingerprint : storedLicense.HardwareFingerprint;
+                    Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Making HTTP call to server...");
                     var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId);
+                    Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Server response received: {serverResult != null}");
 
                     var status = new LicenseStatus
                     {
@@ -192,10 +199,17 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
 
                     if (serverResult == null)
                     {
+                        Console.WriteLine("[DEBUG] ForceOnlineValidation() - Server result is NULL");
                         status.IsValid = false;
                         status.Status = "network_error";
                         status.Error = "No response from server";
                         return status;
+                    }
+
+                    Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Server result: Valid={serverResult.Valid}, Success={serverResult.Success}");
+                    if (serverResult.Validation != null)
+                    {
+                        Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Validation info: ActivationLimitExceeded={serverResult.Validation.ActivationLimitExceeded}, CurrentActivations={serverResult.Validation.CurrentActivations}, ActivationLimit={serverResult.Validation.ActivationLimit}");
                     }
 
                     // Handle new server response format
@@ -270,13 +284,39 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         return status;
                     }
                     
-                    // For other validation failures
+                    // For other validation failures - extract activation limit info
+                    Console.WriteLine("[DEBUG] ForceOnlineValidation() - Processing validation failure (valid=false)");
                     status.IsValid = false;
                     status.Status = "invalid";
                     status.Error = serverResult.Error ?? "License is not valid";
                     status.RequiresOnlineValidation = false;
                     status.GraceDaysRemaining = _gracePeriodDays;
                     status.DaysUntilExpiration = 0;
+                    
+                    // Extract activation limit information from server response
+                    if (serverResult.Validation != null)
+                    {
+                        status.ActivationLimitExceeded = serverResult.Validation.ActivationLimitExceeded;
+                        status.CurrentActivations = serverResult.Validation.CurrentActivations;
+                        status.ActivationLimit = serverResult.Validation.ActivationLimit;
+                    }
+                    
+                    // Extract license status from server response
+                    if (serverResult.License != null)
+                    {
+                        status.LicenseStatusFromServer = serverResult.License.Status;
+                        status.ProductVersion = serverResult.License.ProductVersion;
+                        status.features = serverResult.License.Features;
+                        
+                        // Update expiration if available
+                        if (serverResult.License.ExpiresAt.HasValue)
+                        {
+                            status.ExpiresAt = serverResult.License.ExpiresAt;
+                            status.DaysUntilExpiration = Math.Max(0, (int)(serverResult.License.ExpiresAt.Value - DateTime.UtcNow).TotalDays);
+                        }
+                    }
+                    
+                    Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Returning status: IsValid={status.IsValid}, ActivationLimitExceeded={status.ActivationLimitExceeded}");
                     return status;
                 }
             }

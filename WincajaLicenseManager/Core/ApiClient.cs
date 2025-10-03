@@ -121,9 +121,30 @@ namespace WincajaLicenseManager.Core
                 var response = await _httpClient.PostAsync($"{_baseUrl}/validate", content);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
+                // Debug output para ValidationLicenseAsync
+                Console.WriteLine($"[DEBUG] ValidateLicenseAsync - URL: {_baseUrl}/validate");
+                Console.WriteLine($"[DEBUG] ValidateLicenseAsync - Server response ({response.StatusCode}): {responseContent}");
+
                 if (response.IsSuccessStatusCode)
                 {
-                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent);
+                    // Use camelCase deserialization settings to match server response
+                    var jsonSettings = new JsonSerializerSettings
+                    {
+                        ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
+                    };
+                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
+                    
+                    // Debug output del objeto deserializado
+                    Console.WriteLine($"[DEBUG] ValidateLicenseAsync - Deserialized result: Success={result?.Success}, Valid={result?.Valid}");
+                    if (result?.License != null)
+                    {
+                        Console.WriteLine($"[DEBUG] ValidateLicenseAsync - License.ExpiresAt: {result.License.ExpiresAt}");
+                    }
+                    if (result?.Data != null)
+                    {
+                        Console.WriteLine($"[DEBUG] ValidateLicenseAsync - Data.ExpiresAt: {result.Data.ExpiresAt}");
+                    }
+                    
                     return result ?? new ValidationResponse { Success = false, Error = "Invalid response from server" };
                 }
                 else
@@ -131,7 +152,11 @@ namespace WincajaLicenseManager.Core
                     // Try to parse error response
                     try
                     {
-                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent);
+                        var jsonSettings = new JsonSerializerSettings
+                        {
+                            ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
+                        };
+                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
                         if (errorResponse != null)
                         {
                             errorResponse.StatusCode = (int)response.StatusCode;
@@ -210,14 +235,35 @@ namespace WincajaLicenseManager.Core
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent);
+                    // Use camelCase deserialization settings to match server response
+                    var jsonSettings = new JsonSerializerSettings
+                    {
+                        ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
+                    };
+                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
+                    
+                    // Debug output del objeto deserializado
+                    Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - Deserialized result: Success={result?.Success}, Valid={result?.Valid}");
+                    if (result?.License != null)
+                    {
+                        Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - License.ExpiresAt: {result.License.ExpiresAt}");
+                    }
+                    if (result?.Data != null)
+                    {
+                        Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - Data.ExpiresAt: {result.Data.ExpiresAt}");
+                    }
+                    
                     return result ?? new ValidationResponse { Success = false, Error = "Invalid response from server" };
                 }
                 else
                 {
                     try
                     {
-                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent);
+                        var jsonSettings = new JsonSerializerSettings
+                        {
+                            ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
+                        };
+                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
                         if (errorResponse != null)
                         {
                             errorResponse.StatusCode = (int)response.StatusCode;

@@ -115,6 +115,7 @@ namespace WincajaLicenseManager
                     success = status.IsValid,
                     status = status.Status,
                     licenseKey = status.LicenseKey,
+                    organizationName = status.OrganizationName,
                     expiresAt = status.ExpiresAt?.ToString("yyyy-MM-dd"),
                     daysUntilExpiration = status.DaysUntilExpiration,
                     lastValidation = status.LastValidation.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -123,6 +124,7 @@ namespace WincajaLicenseManager
                     features = status.features,
                     productversion = status.ProductVersion,
                     error = status.Error,
+
               
                     
 

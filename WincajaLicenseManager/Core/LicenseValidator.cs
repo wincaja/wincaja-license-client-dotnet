@@ -212,7 +212,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         status.LastValidation = storedLicense.LastValidation;
                         status.GraceDaysRemaining = _gracePeriodDays;
                         status.RequiresOnlineValidation = false;
-
+                      
                         // Use server validity
                         status.IsValid = serverResult.Valid;
                         status.Status = serverResult.License.Status ?? "active";
@@ -222,11 +222,13 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                             : int.MaxValue;
 
                         status.ProductVersion = serverResult.License.ProductVersion;
+                        status.OrganizationName = serverResult.License.OrganizationName;
                         //features
                         status.features = serverResult.License.Features;
-                       
-  
-                        
+                        status.ExpiresAt = serverResult.License.ExpiresAt;
+
+
+
                         return status;
                     }
                     // Handle legacy format for backward compatibility

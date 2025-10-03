@@ -67,6 +67,7 @@ namespace WincajaLicenseManager.Models
         public string LicenseId { get; set; }
         public string LicenseKey { get; set; }
         public string ClientEmail { get; set; }
+        public string OrganizationName { get; set; }
         public string ProductId { get; set; }
         public string ProductVersion { get; set; }
         public string LicenseType { get; set; }
@@ -131,6 +132,7 @@ namespace WincajaLicenseManager.Models
         public bool IsValid { get; set; }
         public string Status { get; set; }
         public string LicenseKey { get; set; }
+        public string OrganizationName { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public int DaysUntilExpiration { get; set; }
         public DateTime LastValidation { get; set; }

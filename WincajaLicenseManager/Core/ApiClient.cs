@@ -137,8 +137,14 @@ namespace WincajaLicenseManager.Core
                     };
                     var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
                     
+                    // NUEVO: Calcular HasLicense basado en los datos del servidor
+                    if (result != null)
+                    {
+                        result.HasLicense = CalculateHasLicense(result);
+                    }
+                    
                     // Debug output del objeto deserializado
-                    Console.WriteLine($"[DEBUG] ValidateLicenseAsync - Deserialized result: Success={result?.Success}, Valid={result?.Valid}");
+                    Console.WriteLine($"[DEBUG] ValidateLicenseAsync - Deserialized result: Success={result?.Success}, Valid={result?.Valid}, HasLicense={result?.HasLicense}");
                     if (result?.License != null)
                     {
                         Console.WriteLine($"[DEBUG] ValidateLicenseAsync - License.ExpiresAt: {result.License.ExpiresAt}");
@@ -258,8 +264,14 @@ namespace WincajaLicenseManager.Core
                     };
                     var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
                     
+                    // NUEVO: Calcular HasLicense basado en los datos del servidor
+                    if (result != null)
+                    {
+                        result.HasLicense = CalculateHasLicense(result);
+                    }
+                    
                     // Debug output del objeto deserializado
-                    Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - Deserialized result: Success={result?.Success}, Valid={result?.Valid}");
+                    Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - Deserialized result: Success={result?.Success}, Valid={result?.Valid}, HasLicense={result?.HasLicense}");
                     if (result?.License != null)
                     {
                         Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - License.ExpiresAt: {result.License.ExpiresAt}");
@@ -404,6 +416,38 @@ namespace WincajaLicenseManager.Core
         public void Dispose()
         {
             _httpClient?.Dispose();
+        }
+
+        // NUEVO: Método para calcular si la PC tiene licencia
+        private bool CalculateHasLicense(ValidationResponse response)
+        {
+            if (response == null) return false;
+
+            // Caso 1: Si hay activaciones registradas, tiene licencia
+            if (response.Validation?.CurrentActivations > 0)
+            {
+                return true;
+            }
+
+            // Caso 2: Si hay información de licencia válida, tiene licencia
+            if (response.License != null && !string.IsNullOrEmpty(response.License.LicenseKey))
+            {
+                return true;
+            }
+
+            // Caso 3: Si hay información SSL usada, tiene licencia
+            if (response.Ssl?.Used == true)
+            {
+                return true;
+            }
+
+            // Caso 4: Si hay datos de validación con información de licencia
+            if (response.Data != null && !string.IsNullOrEmpty(response.Data.Status))
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

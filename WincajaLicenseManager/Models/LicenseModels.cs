@@ -64,6 +64,9 @@ namespace WincajaLicenseManager.Models
         public string Error { get; set; }
         public int StatusCode { get; set; }
         public SslInfo Ssl { get; set; } // NUEVO: Información SSL de la respuesta
+        
+        // NUEVO: Campo calculado para indicar si la PC tiene licencia
+        public bool HasLicense { get; set; }
     }
 
     public class LicenseData

@@ -92,9 +92,10 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     var onlineResult = PerformOnlineValidationHardware(storedLicense);
                     if (onlineResult != null)
                     {
-                        // Handle new server response format
-                        if (onlineResult.Valid && onlineResult.License != null)
+                        // NUEVA LÓGICA INTELIGENTE: Manejar respuestas basadas en HasLicense y Valid
+                        if (onlineResult.HasLicense && onlineResult.Valid && onlineResult.License != null)
                         {
+                            // Licencia disponible y válida
                             storedLicense.LastValidation = DateTime.UtcNow;
                             if (onlineResult.License.ExpiresAt.HasValue)
                             {
@@ -105,6 +106,47 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                             status.LastValidation = storedLicense.LastValidation;
                             status.RequiresOnlineValidation = false;
                             status.GraceDaysRemaining = _gracePeriodDays;
+                        }
+                        else if (onlineResult.HasLicense && !onlineResult.Valid)
+                        {
+                            // Licencia activada pero no disponible - actualizar timestamp pero mantener estado
+                            storedLicense.LastValidation = DateTime.UtcNow;
+                            _storage.SaveLicense(storedLicense);
+
+                            status.LastValidation = storedLicense.LastValidation;
+                            status.RequiresOnlineValidation = false;
+                            status.GraceDaysRemaining = _gracePeriodDays;
+                            
+                            // Determinar motivo específico
+                            if (onlineResult.Validation?.ActivationLimitExceeded == true)
+                            {
+                                status.IsValid = false;
+                                status.Status = "activation_limit_exceeded";
+                                status.Error = "Esta licencia ya fue activada en otra máquina.";
+                            }
+                            else if (onlineResult.Ssl?.Required == true && onlineResult.Ssl?.Validation?.Valid == false)
+                            {
+                                status.IsValid = false;
+                                status.Status = "ssl_validation_failed";
+                                status.Error = GetSslErrorMessage(onlineResult);
+                            }
+                            else
+                            {
+                                status.IsValid = false;
+                                status.Status = "license_not_available";
+                                status.Error = "La licencia no está disponible para uso en esta máquina.";
+                            }
+                            return status;
+                        }
+                        else if (!onlineResult.HasLicense)
+                        {
+                            // No tiene licencia
+                            status.IsValid = false;
+                            status.Status = "not_activated";
+                            status.Error = "No se encontró licencia activa.";
+                            status.RequiresOnlineValidation = false;
+                            status.GraceDaysRemaining = 0;
+                            return status;
                         }
                         // Handle legacy format
                         else if (onlineResult.Success && onlineResult.Data != null)
@@ -186,7 +228,8 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 {
                     var fp = !string.IsNullOrWhiteSpace(storedLicense.ServerHardwareFingerprint) ? storedLicense.ServerHardwareFingerprint : storedLicense.HardwareFingerprint;
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Making HTTP call to server...");
-                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId, null);
+                    Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Using stored SSL: {storedLicense.SslNumber ?? "null"}");
+                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId, storedLicense.SslNumber);
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Server response received: {serverResult != null}");
 
                     var status = new LicenseStatus
@@ -212,9 +255,14 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Validation info: ActivationLimitExceeded={serverResult.Validation.ActivationLimitExceeded}, CurrentActivations={serverResult.Validation.CurrentActivations}, ActivationLimit={serverResult.Validation.ActivationLimit}");
                     }
 
-                    // Handle new server response format
-                    if (serverResult.Valid && serverResult.License != null)
+                    // NUEVA LÓGICA INTELIGENTE: Manejar respuestas basadas en HasLicense y Valid
+                    Console.WriteLine($"[DEBUG] ForceOnlineValidation() - HasLicense={serverResult.HasLicense}, Valid={serverResult.Valid}");
+                    
+                    // Caso 1: Licencia disponible y válida (puede usar normalmente)
+                    if (serverResult.HasLicense && serverResult.Valid && serverResult.License != null)
                     {
+                        Console.WriteLine("[DEBUG] ForceOnlineValidation() - Licencia disponible y válida");
+                        
                         // Update stored license timestamps and expiration
                         storedLicense.LastValidation = DateTime.UtcNow;
                         if (serverResult.License.ExpiresAt.HasValue)
@@ -228,8 +276,8 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         status.RequiresOnlineValidation = false;
                       
                         // Use server validity
-                        status.IsValid = serverResult.Valid;
-                        status.Status = serverResult.License.Status ?? "active";
+                        status.IsValid = true; // Licencia disponible para usar
+                        status.Status = "active";
                         status.Error = null;
                         status.DaysUntilExpiration = storedLicense.ExpiresAt.HasValue
                             ? Math.Max(0, (int)(storedLicense.ExpiresAt.Value - DateTime.UtcNow).TotalDays)
@@ -237,11 +285,81 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
 
                         status.ProductVersion = serverResult.License.ProductVersion;
                         status.OrganizationName = serverResult.License.OrganizationName;
-                        //features
                         status.features = serverResult.License.Features;
                         status.ExpiresAt = serverResult.License.ExpiresAt;
 
+                        return status;
+                    }
+                    
+                    // Caso 2: Licencia activada pero no disponible (ya fue usada)
+                    else if (serverResult.HasLicense && !serverResult.Valid)
+                    {
+                        Console.WriteLine("[DEBUG] ForceOnlineValidation() - Licencia activada pero no disponible");
+                        
+                        // Update stored license timestamps
+                        storedLicense.LastValidation = DateTime.UtcNow;
+                        _storage.SaveLicense(storedLicense);
 
+                        status.LastValidation = storedLicense.LastValidation;
+                        status.GraceDaysRemaining = _gracePeriodDays;
+                        status.RequiresOnlineValidation = false;
+                        
+                        // Determinar el motivo específico
+                        if (serverResult.Validation?.ActivationLimitExceeded == true)
+                        {
+                            status.IsValid = false;
+                            status.Status = "activation_limit_exceeded";
+                            status.Error = "Esta licencia ya fue activada en otra máquina. Límite de activaciones alcanzado.";
+                        }
+                        else if (serverResult.Ssl?.Required == true && serverResult.Ssl?.Validation?.Valid == false)
+                        {
+                            status.IsValid = false;
+                            status.Status = "ssl_validation_failed";
+                            status.Error = GetSslErrorMessage(serverResult);
+                        }
+                        else
+                        {
+                            status.IsValid = false;
+                            status.Status = "license_not_available";
+                            status.Error = "La licencia no está disponible para uso en esta máquina.";
+                        }
+                        
+                        // Extraer información de activación
+                        if (serverResult.Validation != null)
+                        {
+                            status.ActivationLimitExceeded = serverResult.Validation.ActivationLimitExceeded;
+                            status.CurrentActivations = serverResult.Validation.CurrentActivations;
+                            status.ActivationLimit = serverResult.Validation.ActivationLimit;
+                        }
+                        
+                        // Extraer información de licencia
+                        if (serverResult.License != null)
+                        {
+                            status.LicenseStatusFromServer = serverResult.License.Status;
+                            status.ProductVersion = serverResult.License.ProductVersion;
+                            status.features = serverResult.License.Features;
+                            
+                            if (serverResult.License.ExpiresAt.HasValue)
+                            {
+                                status.ExpiresAt = serverResult.License.ExpiresAt;
+                                status.DaysUntilExpiration = Math.Max(0, (int)(serverResult.License.ExpiresAt.Value - DateTime.UtcNow).TotalDays);
+                            }
+                        }
+                        
+                        return status;
+                    }
+                    
+                    // Caso 3: No tiene licencia (necesita activar)
+                    else if (!serverResult.HasLicense)
+                    {
+                        Console.WriteLine("[DEBUG] ForceOnlineValidation() - No tiene licencia");
+                        
+                        status.IsValid = false;
+                        status.Status = "not_activated";
+                        status.Error = "No se encontró licencia activa. Por favor active su licencia.";
+                        status.RequiresOnlineValidation = false;
+                        status.GraceDaysRemaining = 0;
+                        status.DaysUntilExpiration = 0;
 
                         return status;
                     }
@@ -339,7 +457,8 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 {
                     // Prefer server fingerprint if available, fall back to local
                     var fp = !string.IsNullOrWhiteSpace(license.ServerHardwareFingerprint) ? license.ServerHardwareFingerprint : license.HardwareFingerprint;
-                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId, null);
+                    Console.WriteLine($"[DEBUG] PerformOnlineValidationHardware - Using stored SSL: {license.SslNumber ?? "null"}");
+                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId, license.SslNumber);
                 }
             }
             catch
@@ -427,7 +546,23 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
 
                     if (!response.Success)
                     {
+                        // Manejar errores específicos de SSL
+                        if (response.Error?.Contains("SSL_REQUIRED_NOT_PROVIDED") == true)
+                        {
+                            error = "Esta licencia requiere un número SSL. Por favor proporcione el número SSL.";
+                        }
+                        else if (response.Error?.Contains("SSL_MISMATCH") == true)
+                        {
+                            error = "El número SSL proporcionado no coincide con el registrado para esta licencia.";
+                        }
+                        else if (response.Error?.Contains("ACTIVATION_LIMIT_EXCEEDED") == true)
+                        {
+                            error = "Esta licencia ya ha alcanzado el límite de activaciones permitidas.";
+                        }
+                        else
+                    {
                         error = response.Error ?? "Activation failed";
+                        }
                         return false;
                     }
 
@@ -442,7 +577,8 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         ExpiresAt = null, // We'll need to get this from a separate validation call if needed
                         LastValidation = DateTime.UtcNow,
                         RemainingActivations = response.RemainingActivations,
-                        LicenseInfo = null // We'll need to populate this from a separate call if needed
+                        LicenseInfo = null, // We'll need to populate this from a separate call if needed
+                        SslNumber = sslNumber // NUEVO: Guardar el SSL usado en la activación
                     };
 
                     _storage.SaveLicense(storedLicense);

@@ -132,6 +132,7 @@ namespace WincajaLicenseManager.Models
         public DateTime LastValidation { get; set; }
         public int RemainingActivations { get; set; }
         public LicenseInfo LicenseInfo { get; set; }
+        public string SslNumber { get; set; } // NUEVO: Guardar el SSL usado en la activación
     }
 
     public class LicenseStatus

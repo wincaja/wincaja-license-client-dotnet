@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -214,13 +215,13 @@ namespace WincajaLicenseManager.Core
         {
             try
             {
-                var request = new
+                var request = new ValidationRequest
                 {
-                    licenseKey = licenseKey,
-                    includeHardwareCheck = true,
-                    hardwareFingerprint = hardwareFingerprint,
-                    activationId = activationId,
-                    sslNumber = sslNumber // NUEVO: Incluir SSL si se proporciona
+                    LicenseKey = licenseKey,
+                    ActivationId = activationId,
+                    HardwareInfo = new Dictionary<string, object> { ["hardwareFingerprint"] = hardwareFingerprint },
+                    IncludeHardwareCheck = true,
+                    SslNumber = sslNumber // NUEVO: Incluir SSL si se proporciona
                 };
 
                 // Use camelCase naming
@@ -229,7 +230,12 @@ namespace WincajaLicenseManager.Core
                     ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
                 };
                 var json = JsonConvert.SerializeObject(request, jsonSettings);
-                Console.WriteLine($"[DEBUG] Sending validation request: {json}");
+                
+                // Debug output mejorado para ValidateLicenseHardwareAsync
+                Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - URL: {_baseUrl}/validate");
+                Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - Request body: {json}");
+                Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - SSL Number: {(sslNumber ?? "null")}");
+                
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await _httpClient.PostAsync($"{_baseUrl}/validate", content);

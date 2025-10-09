@@ -215,14 +215,20 @@ namespace WincajaLicenseManager.Core
         {
             try
             {
-                var request = new ValidationRequest
+                // Crear request dinámico para omitir sslNumber cuando es null
+                var request = new Dictionary<string, object>
                 {
-                    LicenseKey = licenseKey,
-                    ActivationId = activationId,
-                    HardwareInfo = new Dictionary<string, object> { ["hardwareFingerprint"] = hardwareFingerprint },
-                    IncludeHardwareCheck = true,
-                    SslNumber = sslNumber // NUEVO: Incluir SSL si se proporciona
+                    ["licenseKey"] = licenseKey,
+                    ["includeHardwareCheck"] = true,
+                    ["hardwareFingerprint"] = hardwareFingerprint,
+                    ["activationId"] = activationId
                 };
+
+                // Solo agregar sslNumber si NO es null o vacío
+                if (!string.IsNullOrEmpty(sslNumber))
+                {
+                    request["sslNumber"] = sslNumber;
+                }
 
                 // Use camelCase naming
                 var jsonSettings = new JsonSerializerSettings
@@ -234,7 +240,8 @@ namespace WincajaLicenseManager.Core
                 // Debug output mejorado para ValidateLicenseHardwareAsync
                 Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - URL: {_baseUrl}/validate");
                 Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - Request body: {json}");
-                Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - SSL Number: {(sslNumber ?? "null")}");
+                Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - SSL Number: {(string.IsNullOrEmpty(sslNumber) ? "OMITIDO (null/vacío)" : sslNumber)}");
+                Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - SSL incluido en request: {!string.IsNullOrEmpty(sslNumber)}");
                 
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 

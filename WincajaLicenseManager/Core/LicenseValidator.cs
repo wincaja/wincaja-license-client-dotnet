@@ -186,7 +186,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 {
                     var fp = !string.IsNullOrWhiteSpace(storedLicense.ServerHardwareFingerprint) ? storedLicense.ServerHardwareFingerprint : storedLicense.HardwareFingerprint;
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Making HTTP call to server...");
-                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId);
+                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId, null);
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Server response received: {serverResult != null}");
 
                     var status = new LicenseStatus
@@ -339,7 +339,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 {
                     // Prefer server fingerprint if available, fall back to local
                     var fp = !string.IsNullOrWhiteSpace(license.ServerHardwareFingerprint) ? license.ServerHardwareFingerprint : license.HardwareFingerprint;
-                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId);
+                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId, null);
                 }
             }
             catch
@@ -410,7 +410,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
             return $"{prefix}{masked}{suffix}";
         }
 
-        public bool ActivateLicense(string licenseKey, out string error)
+        public bool ActivateLicense(string licenseKey, out string error, string sslNumber = null)
         {
             error = null;
 
@@ -423,7 +423,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 // Call activation API
                 using (var apiClient = new ApiClient())
                 {
-                    var response = apiClient.ActivateLicense(licenseKey, hardwareInfo);
+                    var response = apiClient.ActivateLicense(licenseKey, hardwareInfo, sslNumber);
 
                     if (!response.Success)
                     {
@@ -538,6 +538,50 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     Warning = "Local-only deactivation: The license slot on the server is still consumed."
                 };
             }
+        }
+
+        // NUEVOS MÉTODOS PARA MANEJO DE SSL
+        public bool LicenseRequiresSsl(ValidationResponse response)
+        {
+            return response?.Ssl?.Required == true;
+        }
+
+        public bool ValidateSsl(string sslNumber, ValidationResponse response)
+        {
+            if (!response.Ssl.Required) return true;
+            if (string.IsNullOrEmpty(sslNumber)) return false;
+            return response.Ssl.Validation?.Valid == true;
+        }
+
+        public string GetSslErrorMessage(ValidationResponse response)
+        {
+            if (response?.Ssl?.Validation?.Error == "SSL_REQUIRED_NOT_PROVIDED")
+                return "Esta licencia migrada requiere un número SSL para activación";
+            if (response?.Ssl?.Validation?.Error == "SSL_MISMATCH")
+                return "El número SSL proporcionado no coincide con el SSL de la licencia";
+            return response?.Ssl?.Validation?.Message ?? "Error SSL desconocido";
+        }
+
+        public bool IsSslError(ValidationResponse response)
+        {
+            return response?.Ssl?.Validation?.Error != null && 
+                   (response.Ssl.Validation.Error == "SSL_REQUIRED_NOT_PROVIDED" || 
+                    response.Ssl.Validation.Error == "SSL_MISMATCH");
+        }
+
+        public bool IsSslUsed(ValidationResponse response)
+        {
+            return response?.Ssl?.Used == true;
+        }
+
+        public DateTime? GetSslFirstActivation(ValidationResponse response)
+        {
+            return response?.Ssl?.FirstActivation;
+        }
+
+        public StoredLicense GetStoredLicense()
+        {
+            return _storage.LoadLicense<StoredLicense>();
         }
     }
 }

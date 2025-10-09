@@ -8,6 +8,7 @@ namespace WincajaLicenseManager.Models
         public string LicenseKey { get; set; }
         public Dictionary<string, object> HardwareInfo { get; set; }
         public string BindingMode { get; set; } = "flexible";
+        public string SslNumber { get; set; } // NUEVO: Campo SSL para licencias migradas
     }
 
     public class ActivationResponse
@@ -21,6 +22,7 @@ namespace WincajaLicenseManager.Models
         public bool MatchedWithTolerance { get; set; }
         public bool FingerprintUpdated { get; set; }
         public int RemainingActivations { get; set; }
+        public SslInfo Ssl { get; set; } // NUEVO: Información SSL de la respuesta
     }
 
     public class ActivationData
@@ -49,6 +51,7 @@ namespace WincajaLicenseManager.Models
         public string ActivationId { get; set; }
         public Dictionary<string, object> HardwareInfo { get; set; }
         public bool IncludeHardwareCheck { get; set; } = false;
+        public string SslNumber { get; set; } // NUEVO: Campo SSL para licencias migradas
     }
 
     public class ValidationResponse
@@ -60,6 +63,7 @@ namespace WincajaLicenseManager.Models
         public ValidationData Data { get; set; }
         public string Error { get; set; }
         public int StatusCode { get; set; }
+        public SslInfo Ssl { get; set; } // NUEVO: Información SSL de la respuesta
     }
 
     public class LicenseData
@@ -166,5 +170,23 @@ namespace WincajaLicenseManager.Models
         public bool CanForceLocal { get; set; }
         public int RemainingActivations { get; set; }
         public DeactivationResponse ServerResponse { get; set; }
+    }
+
+    // NUEVAS CLASES SSL PARA SOPORTAR LICENCIAS MIGRADAS
+    public class SslInfo
+    {
+        public bool Required { get; set; }
+        public bool Used { get; set; }
+        public DateTime? FirstActivation { get; set; }
+        public bool MigratedFromLegacy { get; set; }
+        public string LegacySslNumber { get; set; }
+        public SslValidation Validation { get; set; }
+    }
+
+    public class SslValidation
+    {
+        public bool Valid { get; set; }
+        public string Message { get; set; }
+        public string Error { get; set; }
     }
 }

@@ -12,8 +12,9 @@ namespace WincajaLicenseManager
         /// Activates a new license key. Returns a JSON string with the result.
         /// </summary>
         /// <param name="licenseKey">The license key to activate</param>
+        /// <param name="sslNumber">Optional SSL number for migrated licenses</param>
         /// <returns>JSON string with activation result</returns>
-        string ActivateLicense(string licenseKey);
+        string ActivateLicense(string licenseKey, string sslNumber = null);
 
         /// <summary>
         /// Validates the existing license. The core function called on app startup.
@@ -60,5 +61,26 @@ namespace WincajaLicenseManager
         /// </summary>
         /// <param name="baseUrl">The base URL for the license API</param>
         void SetApiBaseUrl(string baseUrl);
+
+        /// <summary>
+        /// Checks if a license requires SSL validation
+        /// </summary>
+        /// <param name="licenseKey">The license key to check</param>
+        /// <returns>JSON string indicating if SSL is required</returns>
+        string CheckSslRequirement(string licenseKey);
+
+        /// <summary>
+        /// Validates a license with SSL number
+        /// </summary>
+        /// <param name="licenseKey">The license key to validate</param>
+        /// <param name="sslNumber">The SSL number for migrated licenses</param>
+        /// <returns>JSON string with validation result including SSL info</returns>
+        string ValidateLicenseWithSsl(string licenseKey, string sslNumber);
+
+        /// <summary>
+        /// Gets SSL information for the current license
+        /// </summary>
+        /// <returns>JSON string with SSL information</returns>
+        string GetSslInfo();
     }
 }

@@ -19,7 +19,7 @@ namespace WincajaLicenseManager.Core
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
 
-        public async Task<ActivationResponse> ActivateLicenseAsync(string licenseKey, System.Collections.Generic.Dictionary<string, object> hardwareInfo)
+        public async Task<ActivationResponse> ActivateLicenseAsync(string licenseKey, System.Collections.Generic.Dictionary<string, object> hardwareInfo, string sslNumber = null)
         {
             try
             {
@@ -27,7 +27,8 @@ namespace WincajaLicenseManager.Core
                 {
                     LicenseKey = licenseKey,
                     HardwareInfo = hardwareInfo,
-                    BindingMode = "flexible"
+                    BindingMode = "flexible",
+                    SslNumber = sslNumber // NUEVO: Incluir SSL si se proporciona
                 };
 
                 // Use camelCase naming to match server expectations
@@ -82,12 +83,12 @@ namespace WincajaLicenseManager.Core
             }
         }
 
-        public ActivationResponse ActivateLicense(string licenseKey, System.Collections.Generic.Dictionary<string, object> hardwareInfo)
+        public ActivationResponse ActivateLicense(string licenseKey, System.Collections.Generic.Dictionary<string, object> hardwareInfo, string sslNumber = null)
         {
             // Synchronous wrapper for COM compatibility
             try
             {
-                var task = Task.Run(async () => await ActivateLicenseAsync(licenseKey, hardwareInfo));
+                var task = Task.Run(async () => await ActivateLicenseAsync(licenseKey, hardwareInfo, sslNumber));
                 return task.Result;
             }
             catch (AggregateException ex)
@@ -98,7 +99,7 @@ namespace WincajaLicenseManager.Core
             }
         }
 
-        public async Task<ValidationResponse> ValidateLicenseAsync(string licenseKey, string activationId, System.Collections.Generic.Dictionary<string, object> hardwareInfo)
+        public async Task<ValidationResponse> ValidateLicenseAsync(string licenseKey, string activationId, System.Collections.Generic.Dictionary<string, object> hardwareInfo, string sslNumber = null)
         {
             try
             {
@@ -107,7 +108,8 @@ namespace WincajaLicenseManager.Core
                     LicenseKey = licenseKey,
                     ActivationId = activationId,
                     HardwareInfo = hardwareInfo,
-                    IncludeHardwareCheck = false
+                    IncludeHardwareCheck = false,
+                    SslNumber = sslNumber // NUEVO: Incluir SSL si se proporciona
                 };
 
                 // Use camelCase naming to match server expectations
@@ -193,12 +195,12 @@ namespace WincajaLicenseManager.Core
             }
         }
 
-        public ValidationResponse ValidateLicense(string licenseKey, string activationId, System.Collections.Generic.Dictionary<string, object> hardwareInfo)
+        public ValidationResponse ValidateLicense(string licenseKey, string activationId, System.Collections.Generic.Dictionary<string, object> hardwareInfo, string sslNumber = null)
         {
             // Synchronous wrapper for COM compatibility
             try
             {
-                var task = Task.Run(async () => await ValidateLicenseAsync(licenseKey, activationId, hardwareInfo));
+                var task = Task.Run(async () => await ValidateLicenseAsync(licenseKey, activationId, hardwareInfo, sslNumber));
                 return task.Result;
             }
             catch (AggregateException ex)
@@ -208,7 +210,7 @@ namespace WincajaLicenseManager.Core
             }
         }
 
-        public async Task<ValidationResponse> ValidateLicenseHardwareAsync(string licenseKey, string hardwareFingerprint, string activationId = null)
+        public async Task<ValidationResponse> ValidateLicenseHardwareAsync(string licenseKey, string hardwareFingerprint, string activationId = null, string sslNumber = null)
         {
             try
             {
@@ -217,7 +219,8 @@ namespace WincajaLicenseManager.Core
                     licenseKey = licenseKey,
                     includeHardwareCheck = true,
                     hardwareFingerprint = hardwareFingerprint,
-                    activationId = activationId
+                    activationId = activationId,
+                    sslNumber = sslNumber // NUEVO: Incluir SSL si se proporciona
                 };
 
                 // Use camelCase naming
@@ -300,11 +303,11 @@ namespace WincajaLicenseManager.Core
             }
         }
 
-        public ValidationResponse ValidateLicenseHardware(string licenseKey, string hardwareFingerprint, string activationId = null)
+        public ValidationResponse ValidateLicenseHardware(string licenseKey, string hardwareFingerprint, string activationId = null, string sslNumber = null)
         {
             try
             {
-                var task = Task.Run(async () => await ValidateLicenseHardwareAsync(licenseKey, hardwareFingerprint, activationId));
+                var task = Task.Run(async () => await ValidateLicenseHardwareAsync(licenseKey, hardwareFingerprint, activationId, sslNumber));
                 return task.Result;
             }
             catch (AggregateException ex)

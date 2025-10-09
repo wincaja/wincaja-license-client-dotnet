@@ -22,7 +22,7 @@ namespace WincajaLicenseManager
             _fingerprinter = new HardwareFingerprinter();
         }
 
-        public string ActivateLicense(string licenseKey)
+        public string ActivateLicense(string licenseKey, string sslNumber = null)
         {
             try
             {
@@ -36,7 +36,7 @@ namespace WincajaLicenseManager
                 }
 
                 string error;
-                var success = _validator.ActivateLicense(licenseKey, out error);
+                var success = _validator.ActivateLicense(licenseKey, out error, sslNumber);
 
                 if (success)
                 {
@@ -242,6 +242,225 @@ namespace WincajaLicenseManager
             _apiBaseUrl = baseUrl;
             // Note: Would need to modify ApiClient to accept custom base URL
             // For now, this is a placeholder for future implementation
+        }
+
+        public string CheckSslRequirement(string licenseKey)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(licenseKey))
+                {
+                    return JsonConvert.SerializeObject(new
+                    {
+                        success = false,
+                        error = "License key is required",
+                        sslRequired = false
+                    });
+                }
+
+                // Get hardware info for validation
+                var hardwareInfo = _fingerprinter.GetSimplifiedHardwareInfo();
+                var fingerprint = _fingerprinter.GetHardwareFingerprint();
+
+                // Call validation API to check SSL requirement
+                using (var apiClient = new ApiClient())
+                {
+                    var response = apiClient.ValidateLicenseHardware(licenseKey, fingerprint, null, null);
+
+                    if (response != null)
+                    {
+                        var sslRequired = _validator.LicenseRequiresSsl(response);
+                        var sslInfo = response.Ssl;
+
+                        return JsonConvert.SerializeObject(new
+                        {
+                            success = true,
+                            sslRequired = sslRequired,
+                            sslInfo = sslInfo != null ? new
+                            {
+                                required = sslInfo.Required,
+                                used = sslInfo.Used,
+                                firstActivation = sslInfo.FirstActivation?.ToString("yyyy-MM-dd HH:mm:ss"),
+                                migratedFromLegacy = sslInfo.MigratedFromLegacy,
+                                legacySslNumber = sslInfo.LegacySslNumber,
+                                validation = sslInfo.Validation != null ? new
+                                {
+                                    valid = sslInfo.Validation.Valid,
+                                    message = sslInfo.Validation.Message,
+                                    error = sslInfo.Validation.Error
+                                } : null
+                            } : null,
+                            error = response.Error
+                        });
+                    }
+                    else
+                    {
+                        return JsonConvert.SerializeObject(new
+                        {
+                            success = false,
+                            error = "No response from server",
+                            sslRequired = false
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    success = false,
+                    error = $"SSL check error: {ex.Message}",
+                    sslRequired = false
+                });
+            }
+        }
+
+        public string ValidateLicenseWithSsl(string licenseKey, string sslNumber)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(licenseKey))
+                {
+                    return JsonConvert.SerializeObject(new
+                    {
+                        success = false,
+                        error = "License key is required"
+                    });
+                }
+
+                // Get hardware info for validation
+                var hardwareInfo = _fingerprinter.GetSimplifiedHardwareInfo();
+                var fingerprint = _fingerprinter.GetHardwareFingerprint();
+
+                // Call validation API with SSL
+                using (var apiClient = new ApiClient())
+                {
+                    var response = apiClient.ValidateLicenseHardware(licenseKey, fingerprint, null, sslNumber);
+
+                    if (response != null)
+                    {
+                        var isValid = response.Valid && response.Success;
+                        var sslInfo = response.Ssl;
+
+                        var result = new
+                        {
+                            success = isValid,
+                            valid = response.Valid,
+                            sslRequired = sslInfo?.Required ?? false,
+                            sslValid = sslInfo?.Validation?.Valid ?? true,
+                            sslInfo = sslInfo != null ? new
+                            {
+                                required = sslInfo.Required,
+                                used = sslInfo.Used,
+                                firstActivation = sslInfo.FirstActivation?.ToString("yyyy-MM-dd HH:mm:ss"),
+                                migratedFromLegacy = sslInfo.MigratedFromLegacy,
+                                legacySslNumber = sslInfo.LegacySslNumber,
+                                validation = sslInfo.Validation != null ? new
+                                {
+                                    valid = sslInfo.Validation.Valid,
+                                    message = sslInfo.Validation.Message,
+                                    error = sslInfo.Validation.Error
+                                } : null
+                            } : null,
+                            error = response.Error,
+                            licenseInfo = response.License != null ? new
+                            {
+                                licenseKey = response.License.LicenseKey,
+                                clientEmail = response.License.ClientEmail,
+                                expiresAt = response.License.ExpiresAt?.ToString("yyyy-MM-dd"),
+                                status = response.License.Status
+                            } : null
+                        };
+
+                        return JsonConvert.SerializeObject(result);
+                    }
+                    else
+                    {
+                        return JsonConvert.SerializeObject(new
+                        {
+                            success = false,
+                            error = "No response from server"
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    success = false,
+                    error = $"Validation error: {ex.Message}"
+                });
+            }
+        }
+
+        public string GetSslInfo()
+        {
+            try
+            {
+                // Get current stored license
+                var storedLicense = _validator.GetStoredLicense();
+                if (storedLicense == null)
+                {
+                    return JsonConvert.SerializeObject(new
+                    {
+                        success = false,
+                        error = "No license found",
+                        sslInfo = (object)null
+                    });
+                }
+
+                // Get hardware info for validation
+                var hardwareInfo = _fingerprinter.GetSimplifiedHardwareInfo();
+                var fingerprint = _fingerprinter.GetHardwareFingerprint();
+
+                // Call validation API to get current SSL info
+                using (var apiClient = new ApiClient())
+                {
+                    var response = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fingerprint, storedLicense.ActivationId, null);
+
+                    if (response != null && response.Ssl != null)
+                    {
+                        var sslInfo = response.Ssl;
+                        return JsonConvert.SerializeObject(new
+                        {
+                            success = true,
+                            sslInfo = new
+                            {
+                                required = sslInfo.Required,
+                                used = sslInfo.Used,
+                                firstActivation = sslInfo.FirstActivation?.ToString("yyyy-MM-dd HH:mm:ss"),
+                                migratedFromLegacy = sslInfo.MigratedFromLegacy,
+                                legacySslNumber = sslInfo.LegacySslNumber,
+                                validation = sslInfo.Validation != null ? new
+                                {
+                                    valid = sslInfo.Validation.Valid,
+                                    message = sslInfo.Validation.Message,
+                                    error = sslInfo.Validation.Error
+                                } : null
+                            }
+                        });
+                    }
+                    else
+                    {
+                        return JsonConvert.SerializeObject(new
+                        {
+                            success = false,
+                            error = "No SSL information available",
+                            sslInfo = (object)null
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    success = false,
+                    error = $"SSL info error: {ex.Message}",
+                    sslInfo = (object)null
+                });
+            }
         }
     }
 }

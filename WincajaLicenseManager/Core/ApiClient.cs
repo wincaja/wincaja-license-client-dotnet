@@ -131,11 +131,11 @@ namespace WincajaLicenseManager.Core
                 if (response.IsSuccessStatusCode)
                 {
                     // Use camelCase deserialization settings to match server response
-                    var jsonSettings = new JsonSerializerSettings
+                    var jsonSettingsx = new JsonSerializerSettings
                     {
                         ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
                     };
-                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
+                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettingsx);
                     
                     // NUEVO: Calcular HasLicense basado en los datos del servidor
                     if (result != null)
@@ -161,11 +161,11 @@ namespace WincajaLicenseManager.Core
                     // Try to parse error response
                     try
                     {
-                        var jsonSettings = new JsonSerializerSettings
+                        var jsonSettingsx = new JsonSerializerSettings
                         {
                             ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
                         };
-                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
+                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettingsx);
                         if (errorResponse != null)
                         {
                             errorResponse.StatusCode = (int)response.StatusCode;
@@ -258,17 +258,47 @@ namespace WincajaLicenseManager.Core
                 if (response.IsSuccessStatusCode)
                 {
                     // Use camelCase deserialization settings to match server response
-                    var jsonSettings = new JsonSerializerSettings
+                    var jsonSettingsx = new JsonSerializerSettings
                     {
                         ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
                     };
-                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
-                    
+                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettingsx);
+
+
                     // NUEVO: Calcular HasLicense basado en los datos del servidor
                     if (result != null)
                     {
                         result.HasLicense = CalculateHasLicense(result);
+
+                        if (result.HasLicense)
+                        {
+                            result.Valid = true;
+                            result.Success = true;
+                        }
                     }
+
+
+                    if (result.Validation.HardwareValid == false)
+                    {
+                        Console.WriteLine($"[DEBUG] Hardware validation failed for license {licenseKey} with activation {activationId}");
+                        result.Valid = true;
+                        result.Success = true;
+                        result.HasLicense = false;
+                    }
+
+                    if (result.Validation.HardwareValidationDetails != null)
+                    {
+                        Console.WriteLine($"[DEBUG] HardwareValidationDetails: {JsonConvert.SerializeObject(result.Validation.HardwareValidationDetails)}");
+                       // [DEBUG] HardwareValidationDetails: { "reason":"Activation not found for this license"}
+                       if(result.Validation.HardwareValidationDetails is Newtonsoft.Json.Linq.JObject jObject &&
+                          jObject.TryGetValue("reason", out var reasonToken))
+                       {
+                           var reason = reasonToken.ToString();
+                           Console.WriteLine($"[DEBUG] Hardware validation failed reason: {reason}");
+                        }
+                    }
+
+                 
                     
                     // Debug output del objeto deserializado
                     Console.WriteLine($"[DEBUG] ValidateLicenseHardwareAsync - Deserialized result: Success={result?.Success}, Valid={result?.Valid}, HasLicense={result?.HasLicense}");
@@ -287,11 +317,11 @@ namespace WincajaLicenseManager.Core
                 {
                     try
                     {
-                        var jsonSettings = new JsonSerializerSettings
+                        var jsonSettingsx = new JsonSerializerSettings
                         {
                             ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
                         };
-                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
+                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettingsx);
                         if (errorResponse != null)
                         {
                             errorResponse.StatusCode = (int)response.StatusCode;

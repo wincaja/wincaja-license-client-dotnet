@@ -228,8 +228,9 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 {
                     var fp = !string.IsNullOrWhiteSpace(storedLicense.ServerHardwareFingerprint) ? storedLicense.ServerHardwareFingerprint : storedLicense.HardwareFingerprint;
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Making HTTP call to server...");
-                    Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Using stored SSL: {storedLicense.SslNumber ?? "null"}");
-                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId, storedLicense.SslNumber);
+                    Console.WriteLine($"[INFO] ForceOnlineValidation() - SSL no es enviado (API v1.1: ssl.used maneja reactivaciones)");
+                    // ACTUALIZADO: No enviar SSL (obsoleto con API v1.1)
+                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId);
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Server response received: {serverResult != null}");
 
                     var status = new LicenseStatus
@@ -457,8 +458,9 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 {
                     // Prefer server fingerprint if available, fall back to local
                     var fp = !string.IsNullOrWhiteSpace(license.ServerHardwareFingerprint) ? license.ServerHardwareFingerprint : license.HardwareFingerprint;
-                    Console.WriteLine($"[DEBUG] PerformOnlineValidationHardware - Using stored SSL: {license.SslNumber ?? "null"}");
-                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId, license.SslNumber);
+                    Console.WriteLine($"[INFO] PerformOnlineValidationHardware - SSL no es enviado (API v1.1: ssl.used maneja reactivaciones)");
+                    // ACTUALIZADO: No enviar SSL (obsoleto con API v1.1)
+                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId);
                 }
             }
             catch
@@ -529,15 +531,103 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
             return $"{prefix}{masked}{suffix}";
         }
 
+        // NUEVO: Método para verificar requisitos SSL de una licencia
+        // Consulta el servidor para determinar si es primera activación
+        public SslRequirementInfo CheckSslRequirement(string licenseKey, out string error)
+        {
+            error = null;
+            var info = new SslRequirementInfo();
+
+            try
+            {
+                using (var apiClient = new ApiClient())
+                {
+                    // Validar sin hardware check para obtener info SSL
+                    Console.WriteLine($"[DEBUG] CheckSslRequirement - Consultando estado SSL para {MaskLicenseKey(licenseKey)}");
+                    var response = apiClient.ValidateLicense(licenseKey);
+
+                    if (response?.Ssl != null)
+                    {
+                        info.IsRequired = response.Ssl.Required;
+                        info.IsFirstActivation = !response.Ssl.Used; // ← CLAVE: ssl.used = false significa primera activación
+                        info.IsMigrated = response.Ssl.MigratedFromLegacy;
+                        info.LegacySslNumber = response.Ssl.LegacySslNumber;
+
+                        if (info.IsFirstActivation && info.IsRequired)
+                        {
+                            info.Message = "Esta licencia requiere SSL para primera activación. " +
+                                          "Por favor proporcione el número SSL que aparece en su documento de licencia.";
+                            Console.WriteLine($"[INFO] Primera activación detectada - SSL requerido");
+                        }
+                        else if (info.IsRequired && !info.IsFirstActivation)
+                        {
+                            info.Message = "Esta licencia ya fue activada previamente. SSL no es necesario para reactivar.";
+                            Console.WriteLine($"[INFO] Reactivación detectada - SSL opcional");
+                        }
+                        else
+                        {
+                            info.Message = "Esta licencia no requiere SSL.";
+                            Console.WriteLine($"[INFO] Licencia nueva - SSL no requerido");
+                        }
+                    }
+                    else
+                    {
+                        // Licencia nueva sin SSL
+                        info.IsRequired = false;
+                        info.IsFirstActivation = false;
+                        info.IsMigrated = false;
+                        info.Message = "Esta licencia no requiere SSL.";
+                    }
+
+                    return info;
+                }
+            }
+            catch (Exception ex)
+            {
+                error = $"Error al verificar requisitos SSL: {ex.Message}";
+                Console.WriteLine($"[ERROR] CheckSslRequirement failed: {ex.Message}");
+                return info;
+            }
+        }
+
         public bool ActivateLicense(string licenseKey, out string error, string sslNumber = null)
         {
             error = null;
 
             try
             {
+                // NUEVO: Verificar requisitos SSL antes de activar
+                Console.WriteLine($"[DEBUG] ActivateLicense - Verificando requisitos SSL...");
+                var sslInfo = CheckSslRequirement(licenseKey, out var checkError);
+                
+                if (!string.IsNullOrEmpty(checkError))
+                {
+                    error = checkError;
+                    Console.WriteLine($"[ERROR] ActivateLicense - Error al verificar SSL: {checkError}");
+                    return false;
+                }
+
+                // NUEVO: Si es primera activación de licencia migrada y NO se proporcionó SSL
+                if (sslInfo.IsFirstActivation && sslInfo.IsRequired && string.IsNullOrEmpty(sslNumber))
+                {
+                    error = "SSL_REQUIRED_FOR_FIRST_ACTIVATION: Esta licencia requiere su número SSL para la primera activación. " +
+                            "Por favor proporcione el número SSL que aparece en su documento de licencia.";
+                    Console.WriteLine($"[ERROR] Primera activación - SSL requerido pero no proporcionado");
+                    return false;
+                }
+
+                // NUEVO: Si NO es primera activación y se proporcionó SSL, advertir que no es necesario
+                if (!sslInfo.IsFirstActivation && !string.IsNullOrEmpty(sslNumber))
+                {
+                    Console.WriteLine($"[INFO] SSL proporcionado pero no es necesario (licencia ya activada previamente). Continuando...");
+                    // No es error, el servidor lo manejará correctamente
+                }
+
                 // Get hardware info
                 var hardwareInfo = _fingerprinter.GetSimplifiedHardwareInfo();
                 var fingerprint = _fingerprinter.GetHardwareFingerprint();
+
+                Console.WriteLine($"[DEBUG] ActivateLicense - Enviando request de activación{(string.IsNullOrEmpty(sslNumber) ? " sin SSL" : " con SSL")}");
 
                 // Call activation API
                 using (var apiClient = new ApiClient())
@@ -546,24 +636,45 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
 
                     if (!response.Success)
                     {
-                        // Manejar errores específicos de SSL
-                        if (response.Error?.Contains("SSL_REQUIRED_NOT_PROVIDED") == true)
+                        // Manejar errores específicos de SSL (nueva lógica API v1.1)
+                        if (response.Error?.Contains("SSL_REQUIRED") == true)
                         {
-                            error = "Esta licencia requiere un número SSL. Por favor proporcione el número SSL.";
+                            error = "SSL_REQUIRED: Esta licencia requiere un número SSL para primera activación. " +
+                                    "Por favor proporcione el número SSL que aparece en su documento.";
                         }
                         else if (response.Error?.Contains("SSL_MISMATCH") == true)
                         {
-                            error = "El número SSL proporcionado no coincide con el registrado para esta licencia.";
+                            error = "SSL_MISMATCH: El número SSL proporcionado no coincide con el registrado. " +
+                                    "Verifique el SSL en su documento de licencia.";
                         }
-                        else if (response.Error?.Contains("ACTIVATION_LIMIT_EXCEEDED") == true)
+                        else if (response.Error?.Contains("ACTIVATION_LIMIT_EXCEEDED") == true || 
+                                 response.Error?.Contains("Activation limit reached") == true)
                         {
-                            error = "Esta licencia ya ha alcanzado el límite de activaciones permitidas.";
+                            error = "ACTIVATION_LIMIT_EXCEEDED: Esta licencia ya alcanzó el límite de activaciones permitidas. " +
+                                    "Debe desactivar una activación existente primero.";
                         }
                         else
-                    {
-                        error = response.Error ?? "Activation failed";
+                        {
+                            error = response.Error ?? "Activation failed";
                         }
+                        
+                        Console.WriteLine($"[ERROR] Activación fallida: {error}");
                         return false;
+                    }
+
+                    // NUEVO: Informar al usuario si fue primera activación exitosa con SSL
+                    if (response.Ssl?.Used == true && response.Ssl?.FirstActivation != null)
+                    {
+                        Console.WriteLine("✅ Primera activación exitosa con SSL.");
+                        Console.WriteLine("   Ya no necesitará el número SSL para futuras activaciones en otras máquinas.");
+                    }
+                    else if (response.Ssl?.Used == true)
+                    {
+                        Console.WriteLine("✅ Reactivación exitosa (SSL no fue necesario).");
+                    }
+                    else
+                    {
+                        Console.WriteLine("✅ Activación exitosa.");
                     }
 
                     // Store the activated license
@@ -571,14 +682,14 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     {
                         LicenseKey = licenseKey,
                         ActivationId = response.ActivationId,
-                        HardwareFingerprint = fingerprint, // local calculated fingerprint
+                        HardwareFingerprint = fingerprint,
                         ServerHardwareFingerprint = string.IsNullOrWhiteSpace(response.HardwareFingerprint) ? fingerprint : response.HardwareFingerprint,
                         ActivatedAt = DateTime.TryParse(response.ActivatedAt, out var activatedAt) ? activatedAt : DateTime.UtcNow,
-                        ExpiresAt = null, // We'll need to get this from a separate validation call if needed
+                        ExpiresAt = null,
                         LastValidation = DateTime.UtcNow,
                         RemainingActivations = response.RemainingActivations,
-                        LicenseInfo = null, // We'll need to populate this from a separate call if needed
-                        SslNumber = sslNumber // NUEVO: Guardar el SSL usado en la activación
+                        LicenseInfo = null
+                        // NOTA: SslNumber ya no se guarda (obsoleto con API v1.1)
                     };
 
                     _storage.SaveLicense(storedLicense);
@@ -588,6 +699,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
             catch (Exception ex)
             {
                 error = $"Activation error: {ex.Message}";
+                Console.WriteLine($"[ERROR] ActivateLicense - Exception: {ex.Message}");
                 return false;
             }
         }

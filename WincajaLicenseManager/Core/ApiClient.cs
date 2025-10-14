@@ -372,6 +372,98 @@ namespace WincajaLicenseManager.Core
             }
         }
 
+        // NUEVO: Método para validar licencia sin verificación de hardware
+        // Útil para consultar el estado ssl.used antes de activar
+        public async Task<ValidationResponse> ValidateLicenseAsync(string licenseKey)
+        {
+            try
+            {
+                var request = new
+                {
+                    licenseKey = licenseKey,
+                    includeHardwareCheck = false
+                };
+
+                var jsonSettings = new JsonSerializerSettings
+                {
+                    ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver()
+                };
+                var json = JsonConvert.SerializeObject(request, jsonSettings);
+                
+                Console.WriteLine($"[DEBUG] ValidateLicenseAsync - URL: {_baseUrl}/validate");
+                Console.WriteLine($"[DEBUG] ValidateLicenseAsync - Request body: {json}");
+                
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync($"{_baseUrl}/validate", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[DEBUG] Server response ({response.StatusCode}): {responseContent}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
+                    
+                    if (result != null)
+                    {
+                        result.HasLicense = CalculateHasLicense(result);
+                        
+                        // Debug output del objeto deserializado
+                        Console.WriteLine($"[DEBUG] ValidateLicenseAsync - Deserialized result: Valid={result.Valid}, HasLicense={result.HasLicense}");
+                        if (result.Ssl != null)
+                        {
+                            Console.WriteLine($"[DEBUG] ValidateLicenseAsync - SSL Info: Required={result.Ssl.Required}, Used={result.Ssl.Used}, Migrated={result.Ssl.MigratedFromLegacy}");
+                        }
+                    }
+                    
+                    return result ?? new ValidationResponse { Success = false, Error = "Invalid response from server" };
+                }
+                else
+                {
+                    try
+                    {
+                        var errorResponse = JsonConvert.DeserializeObject<ValidationResponse>(responseContent, jsonSettings);
+                        if (errorResponse != null)
+                        {
+                            errorResponse.StatusCode = (int)response.StatusCode;
+                            errorResponse.HasLicense = CalculateHasLicense(errorResponse);
+                            return errorResponse;
+                        }
+                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}", StatusCode = (int)response.StatusCode };
+                    }
+                    catch
+                    {
+                        return new ValidationResponse { Success = false, Error = $"Server error: {response.StatusCode}", StatusCode = (int)response.StatusCode };
+                    }
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                return new ValidationResponse { Success = false, Error = "Request timed out" };
+            }
+            catch (HttpRequestException ex)
+            {
+                return new ValidationResponse { Success = false, Error = $"Network error: {ex.Message}" };
+            }
+            catch (Exception ex)
+            {
+                return new ValidationResponse { Success = false, Error = $"Unexpected error: {ex.Message}" };
+            }
+        }
+
+        public ValidationResponse ValidateLicense(string licenseKey)
+        {
+            try
+            {
+                var task = Task.Run(async () => await ValidateLicenseAsync(licenseKey));
+                return task.Result;
+            }
+            catch (AggregateException ex)
+            {
+                var innerEx = ex.InnerException;
+                return new ValidationResponse { Success = false, Error = innerEx?.Message ?? "Validation failed" };
+            }
+        }
+
         public async Task<DeactivationResponse> DeactivateLicenseAsync(string licenseKey, string activationId, string reason = null)
         {
             try

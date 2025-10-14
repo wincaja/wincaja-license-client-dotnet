@@ -3,12 +3,33 @@ using System.Collections.Generic;
 
 namespace WincajaLicenseManager.Models
 {
+    // ============================================================================
+    // IMPORTANTE: ACLARACIÓN SOBRE "SSL" EN ESTE CÓDIGO
+    // ============================================================================
+    // En este proyecto, "SSL" NO se refiere al protocolo de seguridad (Secure Sockets Layer)
+    // 
+    // "SSL" aquí significa "SL" = Security Lock / Serial License Number
+    //   - Es el identificador del chip físico de seguridad del sistema legacy
+    //   - Campo en BD histórica: licNoChip
+    // 
+    // Ejemplos de números SL del sistema legacy:
+    //   - "SL11A13197"
+    //   - "SL24A04200"
+    //   - "SL25A05030"
+    //
+    // Este número se usa ÚNICAMENTE para validar la primera activación 
+    // de licencias migradas del sistema anterior.
+    // ============================================================================
+
+
     public class ActivationRequest
     {
         public string LicenseKey { get; set; }
         public Dictionary<string, object> HardwareInfo { get; set; }
         public string BindingMode { get; set; } = "flexible";
-        public string SslNumber { get; set; } // NUEVO: Campo SSL para licencias migradas
+        // NUEVO: Número SL (Serial License) para licencias migradas del sistema legacy
+        // Formato: "SL" + código alfanumérico (ej: "SL11A13197", "SL24A04200")
+        public string SslNumber { get; set; }
     }
 
     public class ActivationResponse
@@ -22,7 +43,8 @@ namespace WincajaLicenseManager.Models
         public bool MatchedWithTolerance { get; set; }
         public bool FingerprintUpdated { get; set; }
         public int RemainingActivations { get; set; }
-        public SslInfo Ssl { get; set; } // NUEVO: Información SSL de la respuesta
+        // NUEVO: Información del número SL (Serial License) de la respuesta
+        public SslInfo Ssl { get; set; }
     }
 
     public class ActivationData
@@ -51,7 +73,9 @@ namespace WincajaLicenseManager.Models
         public string ActivationId { get; set; }
         public Dictionary<string, object> HardwareInfo { get; set; }
         public bool IncludeHardwareCheck { get; set; } = false;
-        public string SslNumber { get; set; } // NUEVO: Campo SSL para licencias migradas
+        // NUEVO: Número SL (Serial License) para licencias migradas del sistema legacy
+        // Formato: "SL" + código alfanumérico (ej: "SL11A13197", "SL24A04200")
+        public string SslNumber { get; set; }
     }
 
     public class ValidationResponse
@@ -63,7 +87,8 @@ namespace WincajaLicenseManager.Models
         public ValidationData Data { get; set; }
         public string Error { get; set; }
         public int StatusCode { get; set; }
-        public SslInfo Ssl { get; set; } // NUEVO: Información SSL de la respuesta
+        // NUEVO: Información del número SL (Serial License) de la respuesta
+        public SslInfo Ssl { get; set; }
         
         // NUEVO: Campo calculado para indicar si la PC tiene licencia
         public bool HasLicense { get; set; }
@@ -132,7 +157,12 @@ namespace WincajaLicenseManager.Models
         public DateTime LastValidation { get; set; }
         public int RemainingActivations { get; set; }
         public LicenseInfo LicenseInfo { get; set; }
-        public string SslNumber { get; set; } // NUEVO: Guardar el SSL usado en la activación
+        
+        // OBSOLETO: Con API v1.1, el número SL ya no necesita guardarse localmente
+        // El número SL (Serial License) solo es requerido en la primera activación, después es opcional
+        // NOTA: "SSL" aquí significa "SL" (Serial License Number), NO el protocolo de seguridad
+        [Obsolete("El número SL no necesita guardarse con la nueva API v1.1. El servidor maneja el estado ssl.used.")]
+        public string SslNumber { get; set; }
     }
 
     public class LicenseStatus
@@ -176,14 +206,16 @@ namespace WincajaLicenseManager.Models
         public DeactivationResponse ServerResponse { get; set; }
     }
 
-    // NUEVAS CLASES SSL PARA SOPORTAR LICENCIAS MIGRADAS
+    // NUEVAS CLASES PARA SOPORTAR LICENCIAS MIGRADAS
+    // NOTA: "SSL" se refiere a "SL" (Serial License Number) del sistema legacy
+    // NO confundir con SSL (Secure Sockets Layer) - aquí significa "Serial License"
     public class SslInfo
     {
         public bool Required { get; set; }
         public bool Used { get; set; }
         public DateTime? FirstActivation { get; set; }
         public bool MigratedFromLegacy { get; set; }
-        public string LegacySslNumber { get; set; }
+        public string LegacySslNumber { get; set; }  // Número SL del sistema legacy (ej: "SL11A13197")
         public SslValidation Validation { get; set; }
     }
 
@@ -192,5 +224,16 @@ namespace WincajaLicenseManager.Models
         public bool Valid { get; set; }
         public string Message { get; set; }
         public string Error { get; set; }
+    }
+
+    // NUEVO: Información sobre requisitos de número SL para una licencia
+    // NOTA: "SSL" = "SL" (Serial License Number), NO el protocolo de seguridad
+    public class SslRequirementInfo
+    {
+        public bool IsRequired { get; set; }
+        public bool IsFirstActivation { get; set; }
+        public bool IsMigrated { get; set; }
+        public string Message { get; set; }
+        public string LegacySslNumber { get; set; }  // Número SL del sistema legacy (ej: "SL11A13197")
     }
 }

@@ -258,7 +258,21 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
 
                     // NUEVA LÓGICA INTELIGENTE: Manejar respuestas basadas en HasLicense y Valid
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - HasLicense={serverResult.HasLicense}, Valid={serverResult.Valid}");
-                    
+
+
+                    if (serverResult.Data == null && serverResult.License == null && serverResult.Ssl == null)
+                    {
+                        status.IsValid = false;
+                        status.Status = "invalid";
+                        status.Error = serverResult.Error ?? "License is not valid";
+                        status.RequiresOnlineValidation = false;
+                        status.GraceDaysRemaining = _gracePeriodDays;
+                        status.DaysUntilExpiration = 0;
+
+                        return status;
+                    }
+
+
                     // Caso 1: Licencia disponible y válida (puede usar normalmente)
                     if (serverResult.HasLicense && serverResult.Valid && serverResult.License != null)
                     {

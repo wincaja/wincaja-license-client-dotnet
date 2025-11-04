@@ -201,6 +201,11 @@ namespace WincajaLicenseManager.Models
         public int CurrentActivations { get; set; }
         public int ActivationLimit { get; set; }
         public string LicenseStatusFromServer { get; set; }
+        public string Suggestion { get; set; }        // Sugerencia para resolver problemas
+        public string RequestId { get; set; }         // ID único para tracking
+        public DiagnosticInfo Diagnostic { get; set; }  // Información técnica detallada
+
+
     }
 
     public enum DeactivationType

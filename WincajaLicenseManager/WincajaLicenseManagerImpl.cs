@@ -35,9 +35,11 @@ namespace WincajaLicenseManager
                     });
                 }
 
-                string error;
-                var success = _validator.ActivateLicense(licenseKey, out error, sslNumber);
+                string error="";
+                //04/11/2025
 
+                //var success = _validator.ActivateLicense(licenseKey, out error, sslNumber);
+                var success = _validator.ActivateLicense(licenseKey, out ValidationResponse response, sslNumber);
                 if (success)
                 {
                     // Get the current status after activation
@@ -49,7 +51,9 @@ namespace WincajaLicenseManager
                         message = "License activated successfully",
                         status = status.Status,
                         expiresAt = status.ExpiresAt?.ToString("yyyy-MM-dd"),
-                        daysUntilExpiration = status.DaysUntilExpiration
+                        daysUntilExpiration = status.DaysUntilExpiration,
+                        
+                        
                     });
                 }
                 else
@@ -57,7 +61,13 @@ namespace WincajaLicenseManager
                     return JsonConvert.SerializeObject(new
                     {
                         success = false,
-                        error = error ?? "Activation failed"
+                        //error = error ?? "Activation failed"
+                        error = response.Error ?? "Activation failed",
+                        message= response.Message,
+                        suggestion = response.Suggestion,
+                        requestid= response.RequestId,
+                        Diagnostic = response.Diagnostic,
+                       
                     });
                 }
             }
@@ -124,10 +134,9 @@ namespace WincajaLicenseManager
                     features = status.features,
                     productversion = status.ProductVersion,
                     error = status.Error,
-
-              
-                    
-
+                    requestid= status.RequestId,
+                    suggestion=status.Suggestion,
+                    diagnostic= status.Diagnostic
                 };
 
                 return JsonConvert.SerializeObject(result);

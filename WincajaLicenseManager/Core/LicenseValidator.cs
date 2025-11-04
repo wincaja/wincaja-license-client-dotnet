@@ -303,6 +303,11 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         status.features = serverResult.License.Features;
                         status.ExpiresAt = serverResult.License.ExpiresAt;
 
+                        status.Suggestion = serverResult.Suggestion;
+                        status.RequestId = serverResult.RequestId;
+                        status.Diagnostic = serverResult.Diagnostic;
+
+
                         return status;
                     }
                     
@@ -353,7 +358,12 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                             status.LicenseStatusFromServer = serverResult.License.Status;
                             status.ProductVersion = serverResult.License.ProductVersion;
                             status.features = serverResult.License.Features;
-                            
+
+                            status.Suggestion = serverResult.Suggestion;
+                            status.RequestId = serverResult.RequestId;
+                            status.Diagnostic = serverResult.Diagnostic;
+
+
                             if (serverResult.License.ExpiresAt.HasValue)
                             {
                                 status.ExpiresAt = serverResult.License.ExpiresAt;
@@ -398,6 +408,10 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                             ? Math.Max(0, (int)(storedLicense.ExpiresAt.Value - DateTime.UtcNow).TotalDays)
                             : int.MaxValue;
 
+                        status.Suggestion = serverResult.Suggestion;
+                        status.RequestId = serverResult.RequestId;
+                        status.Diagnostic = serverResult.Diagnostic;
+
                         return status;
                     }
 
@@ -440,7 +454,11 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         status.LicenseStatusFromServer = serverResult.License.Status;
                         status.ProductVersion = serverResult.License.ProductVersion;
                         status.features = serverResult.License.Features;
-                        
+
+                        status.Suggestion = serverResult.Suggestion;
+                        status.RequestId = serverResult.RequestId;
+                        status.Diagnostic = serverResult.Diagnostic;
+
                         // Update expiration if available
                         if (serverResult.License.ExpiresAt.HasValue)
                         {
@@ -604,9 +622,10 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
             }
         }
 
-        public bool ActivateLicense(string licenseKey, out string error, string sslNumber = null)
+        public bool ActivateLicense(string licenseKey, out ValidationResponse vresponse, string sslNumber = null)
         {
-            error = null;
+            vresponse = new ValidationResponse();
+            vresponse.Error = null;
 
             try
             {
@@ -616,7 +635,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 
                 if (!string.IsNullOrEmpty(checkError))
                 {
-                    error = checkError;
+                    vresponse.Error = checkError;
                     Console.WriteLine($"[ERROR] ActivateLicense - Error al verificar SSL: {checkError}");
                     return false;
                 }
@@ -624,9 +643,10 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 // NUEVO: Si es primera activación de licencia migrada y NO se proporcionó SSL
                 if (sslInfo.IsFirstActivation && sslInfo.IsRequired && string.IsNullOrEmpty(sslNumber))
                 {
-                    error = "SSL_REQUIRED_FOR_FIRST_ACTIVATION: Esta licencia requiere su número SSL para la primera activación. " +
+                    vresponse.Error = "SSL_REQUIRED_FOR_FIRST_ACTIVATION: Esta licencia requiere su número SSL para la primera activación. " +
                             "Por favor proporcione el número SSL que aparece en su documento de licencia.";
                     Console.WriteLine($"[ERROR] Primera activación - SSL requerido pero no proporcionado");
+                    vresponse.Message = sslInfo.Message;
                     return false;
                 }
 
@@ -653,26 +673,31 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                         // Manejar errores específicos de SSL (nueva lógica API v1.1)
                         if (response.Error?.Contains("SSL_REQUIRED") == true)
                         {
-                            error = "SSL_REQUIRED: Esta licencia requiere un número SSL para primera activación. " +
+                            vresponse.Error = "SSL_REQUIRED: Esta licencia requiere un número SSL para primera activación. " +
                                     "Por favor proporcione el número SSL que aparece en su documento.";
                         }
                         else if (response.Error?.Contains("SSL_MISMATCH") == true)
                         {
-                            error = "SSL_MISMATCH: El número SSL proporcionado no coincide con el registrado. " +
+                            vresponse.Error = "SSL_MISMATCH: El número SSL proporcionado no coincide con el registrado. " +
                                     "Verifique el SSL en su documento de licencia.";
                         }
                         else if (response.Error?.Contains("ACTIVATION_LIMIT_EXCEEDED") == true || 
                                  response.Error?.Contains("Activation limit reached") == true)
                         {
-                            error = "ACTIVATION_LIMIT_EXCEEDED: Esta licencia ya alcanzó el límite de activaciones permitidas. " +
+                            vresponse.Error = "ACTIVATION_LIMIT_EXCEEDED: Esta licencia ya alcanzó el límite de activaciones permitidas. " +
                                     "Debe desactivar una activación existente primero.";
                         }
                         else
                         {
-                            error = response.Error ?? "Activation failed";
+                            vresponse.Error = response.Error ?? "Activation failed";
                         }
-                        
-                        Console.WriteLine($"[ERROR] Activación fallida: {error}");
+
+                        vresponse.Suggestion = response.Suggestion;
+                        vresponse.RequestId = response.RequestId;
+                        vresponse.Message = response.Message;
+                        vresponse.Diagnostic = response.Diagnostic;
+
+                        Console.WriteLine($"[ERROR] Activación fallida: {vresponse.Error}");
                         return false;
                     }
 
@@ -690,6 +715,11 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     {
                         Console.WriteLine("✅ Activación exitosa.");
                     }
+
+                    vresponse.Suggestion = response.Suggestion;
+                    vresponse.RequestId = response.RequestId;
+                    vresponse.Message = response.Message;
+                    vresponse.Diagnostic = response.Diagnostic;
 
                     // Store the activated license
                     var storedLicense = new StoredLicense
@@ -712,7 +742,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
             }
             catch (Exception ex)
             {
-                error = $"Activation error: {ex.Message}";
+                vresponse.Error = $"Activation error: {ex.Message}";
                 Console.WriteLine($"[ERROR] ActivateLicense - Exception: {ex.Message}");
                 return false;
             }

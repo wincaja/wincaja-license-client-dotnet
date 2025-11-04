@@ -47,13 +47,25 @@ namespace WincajaLicenseManager.Core
                 var response = await _httpClient.PostAsync($"{_baseUrl}/activate", content);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
-                // Debug output
+                // Debug output mejorado con información de diagnóstico
                 System.Diagnostics.Debug.WriteLine($"Response status: {response.StatusCode}");
                 System.Diagnostics.Debug.WriteLine($"Response body: {responseContent}");
 
                 if (response.IsSuccessStatusCode)
                 {
                     var result = JsonConvert.DeserializeObject<ActivationResponse>(responseContent);
+                    
+                    // NUEVO: Log información de diagnóstico si está disponible
+                    if (result?.Diagnostic != null)
+                    {
+                        Console.WriteLine($"[INFO] Activación - RequestId: {result.RequestId}");
+                        Console.WriteLine($"[INFO] Activación - Fase: {result.Diagnostic.Phase}");
+                        if (!string.IsNullOrEmpty(result.Diagnostic.Hint))
+                        {
+                            Console.WriteLine($"[INFO] Activación - Pista: {result.Diagnostic.Hint}");
+                        }
+                    }
+                    
                     return result ?? new ActivationResponse { Success = false, Error = "Invalid response from server" };
                 }
                 else

@@ -37,6 +37,11 @@ namespace WincajaLicenseManager.Models
         public bool Success { get; set; }
         public string Error { get; set; }
         public string Message { get; set; }
+        // NUEVOS CAMPOS API v1.1 - Mejoras de logging y respuestas
+        public string Suggestion { get; set; }        // Sugerencia para resolver problemas
+        public string RequestId { get; set; }         // ID único para tracking
+        public DiagnosticInfo Diagnostic { get; set; } // Información técnica detallada
+        
         public string ActivationId { get; set; }
         public string HardwareFingerprint { get; set; }
         public string ActivatedAt { get; set; }
@@ -86,6 +91,12 @@ namespace WincajaLicenseManager.Models
         public bool Success { get; set; }
         public ValidationData Data { get; set; }
         public string Error { get; set; }
+        // NUEVOS CAMPOS API v1.1 - Mejoras de logging y respuestas
+        public string Message { get; set; }             // Mensaje descriptivo en español
+        public string Suggestion { get; set; }          // Sugerencia para resolver problemas
+        public string RequestId { get; set; }           // ID único para tracking
+        public DiagnosticInfo Diagnostic { get; set; }  // Información técnica detallada
+        
         public int StatusCode { get; set; }
         // NUEVO: Información del número SL (Serial License) de la respuesta
         public SslInfo Ssl { get; set; }
@@ -132,6 +143,11 @@ namespace WincajaLicenseManager.Models
         public bool Success { get; set; }
         public string Error { get; set; }
         public string Message { get; set; }
+        // NUEVOS CAMPOS API v1.1 - Mejoras de logging y respuestas
+        public string Suggestion { get; set; }          // Sugerencia para resolver problemas
+        public string RequestId { get; set; }           // ID único para tracking
+        public DiagnosticInfo Diagnostic { get; set; }  // Información técnica detallada
+        
         public string LicenseKey { get; set; }
         public string ActivationId { get; set; }
         public int RemainingActivations { get; set; }
@@ -235,5 +251,37 @@ namespace WincajaLicenseManager.Models
         public bool IsMigrated { get; set; }
         public string Message { get; set; }
         public string LegacySslNumber { get; set; }  // Número SL del sistema legacy (ej: "SL11A13197")
+    }
+
+    // NUEVA CLASE API v1.1 - Información de diagnóstico detallada
+    public class DiagnosticInfo
+    {
+        public string Timestamp { get; set; }
+        public string Phase { get; set; }          // En qué fase falló (ssl_validation, database_lookup, etc.)
+        public string Message { get; set; }        // Mensaje técnico en inglés
+        public string Hint { get; set; }           // Pista técnica para resolver
+        
+        // Campos específicos según el error
+        public string LicenseKey { get; set; }
+        public string CurrentStatus { get; set; }
+        public string ExpectedStatus { get; set; }
+        public string ErrorId { get; set; }
+        public string RevokedAt { get; set; }
+        public string RevokedBy { get; set; }
+        public string RevocationReason { get; set; }
+        public bool SslRequired { get; set; }
+        public bool SslUsed { get; set; }
+        public int ActivationLimit { get; set; }
+        public int CurrentActivations { get; set; }
+        public int AvailableSlots { get; set; }
+        public List<ExistingActivation> ExistingActivations { get; set; }
+    }
+
+    // NUEVA CLASE API v1.1 - Información de activaciones existentes
+    public class ExistingActivation
+    {
+        public string Id { get; set; }
+        public string ActivatedAt { get; set; }
+        public string LastSeen { get; set; }
     }
 }

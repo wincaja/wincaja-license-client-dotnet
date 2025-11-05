@@ -40,16 +40,28 @@ namespace WincajaLicenseManager.Core
                 var json = JsonConvert.SerializeObject(request, jsonSettings);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
+                // 🔍 SELF-DEBUG: Logs críticos antes del envío
+                Console.WriteLine($"[SELF-DEBUG] 🚀 PUNTO CRÍTICO: A punto de enviar HTTP POST");
+                Console.WriteLine($"[SELF-DEBUG] URL destino: {_baseUrl}/activate");
+                Console.WriteLine($"[SELF-DEBUG] Request body: {json}");
+                Console.WriteLine($"[SELF-DEBUG] Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+
                 // Debug output
                 System.Diagnostics.Debug.WriteLine($"Sending request to: {_baseUrl}/activate");
                 System.Diagnostics.Debug.WriteLine($"Request body: {json}");
 
+                Console.WriteLine($"[SELF-DEBUG] 🌐 EJECUTANDO HttpClient.PostAsync...");
                 var response = await _httpClient.PostAsync($"{_baseUrl}/activate", content);
+                Console.WriteLine($"[SELF-DEBUG] 🌐 POST COMPLETADO - StatusCode: {response.StatusCode}");
+                
                 var responseContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[SELF-DEBUG] 🌐 CONTENIDO LEÍDO - Longitud: {responseContent?.Length ?? 0} chars");
 
                 // Debug output mejorado con información de diagnóstico
                 System.Diagnostics.Debug.WriteLine($"Response status: {response.StatusCode}");
                 System.Diagnostics.Debug.WriteLine($"Response body: {responseContent}");
+                Console.WriteLine($"[SELF-DEBUG] Response status: {response.StatusCode}");
+                Console.WriteLine($"[SELF-DEBUG] Response body: {responseContent}");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -101,14 +113,30 @@ namespace WincajaLicenseManager.Core
             // Synchronous wrapper for COM compatibility
             try
             {
+                Console.WriteLine($"[SELF-DEBUG] 🔄 WRAPPER SÍNCRONO: Iniciando Task.Run");
                 var task = Task.Run(async () => await ActivateLicenseAsync(licenseKey, hardwareInfo, sslNumber));
-                return task.Result;
+                Console.WriteLine($"[SELF-DEBUG] 🔄 WRAPPER SÍNCRONO: Esperando resultado...");
+                var result = task.Result;
+                Console.WriteLine($"[SELF-DEBUG] 🔄 WRAPPER SÍNCRONO: Resultado obtenido - Success: {result?.Success}");
+                return result;
             }
             catch (AggregateException ex)
             {
                 var innerEx = ex.InnerException;
                 var errorMessage = innerEx?.Message ?? ex.Message ?? "Activation failed";
+                Console.WriteLine($"[SELF-DEBUG] 🚨 BLOQUEADO EN PUNTO #3: AggregateException en wrapper");
+                Console.WriteLine($"[SELF-DEBUG] Exception type: {ex.GetType().Name}");
+                Console.WriteLine($"[SELF-DEBUG] Inner exception: {innerEx?.GetType().Name}");
+                Console.WriteLine($"[SELF-DEBUG] Error message: {errorMessage}");
+                Console.WriteLine($"[SELF-DEBUG] Stack trace: {ex.StackTrace}");
                 return new ActivationResponse { Success = false, Error = $"Activation error: {errorMessage}" };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SELF-DEBUG] 🚨 BLOQUEADO EN PUNTO #3B: Exception general en wrapper");
+                Console.WriteLine($"[SELF-DEBUG] Exception type: {ex.GetType().Name}");
+                Console.WriteLine($"[SELF-DEBUG] Error message: {ex.Message}");
+                return new ActivationResponse { Success = false, Error = $"Activation error: {ex.Message}" };
             }
         }
 

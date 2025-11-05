@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using WincajaLicenseManager.Core;
@@ -400,69 +399,6 @@ namespace WincajaLicenseManager
                 {
                     success = false,
                     error = $"Validation error: {ex.Message}"
-                });
-            }
-        }
-
-        public string DiagnoseMachineState()
-        {
-            try
-            {
-                Console.WriteLine($"[MACHINE-DEBUG] ===== DIAGNÓSTICO COMPLETO DE MÁQUINA =====");
-                
-                // 1. Verificar licencia guardada localmente
-                var storedLicense = _validator.GetStoredLicense();
-                Console.WriteLine($"[MACHINE-DEBUG] ¿Hay licencia guardada?: {storedLicense != null}");
-                
-                if (storedLicense != null)
-                {
-                    Console.WriteLine($"[MACHINE-DEBUG] Licencia guardada: {storedLicense.LicenseKey?.Substring(0, 4)}****");
-                    Console.WriteLine($"[MACHINE-DEBUG] ActivationId: {storedLicense.ActivationId}");
-                    Console.WriteLine($"[MACHINE-DEBUG] Activada: {storedLicense.ActivatedAt}");
-                    Console.WriteLine($"[MACHINE-DEBUG] Última validación: {storedLicense.LastValidation}");
-                }
-                
-                // 2. Verificar ruta de archivos
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var wincajaPath = Path.Combine(appDataPath, "Wincaja");
-                var licensePath = Path.Combine(wincajaPath, "license.dat");
-                
-                Console.WriteLine($"[MACHINE-DEBUG] Ruta de datos: {wincajaPath}");
-                Console.WriteLine($"[MACHINE-DEBUG] Archivo licencia: {licensePath}");
-                Console.WriteLine($"[MACHINE-DEBUG] ¿Existe directorio?: {Directory.Exists(wincajaPath)}");
-                Console.WriteLine($"[MACHINE-DEBUG] ¿Existe archivo?: {File.Exists(licensePath)}");
-                
-                if (File.Exists(licensePath))
-                {
-                    var fileInfo = new FileInfo(licensePath);
-                    Console.WriteLine($"[MACHINE-DEBUG] Tamaño archivo: {fileInfo.Length} bytes");
-                    Console.WriteLine($"[MACHINE-DEBUG] Modificado: {fileInfo.LastWriteTime}");
-                }
-                
-                // 3. Información del sistema
-                Console.WriteLine($"[MACHINE-DEBUG] Nombre máquina: {Environment.MachineName}");
-                Console.WriteLine($"[MACHINE-DEBUG] Usuario: {Environment.UserName}");
-                Console.WriteLine($"[MACHINE-DEBUG] OS: {Environment.OSVersion}");
-                
-                return JsonConvert.SerializeObject(new
-                {
-                    success = true,
-                    hasStoredLicense = storedLicense != null,
-                    storedLicenseKey = storedLicense?.LicenseKey?.Substring(0, 4) + "****",
-                    activationId = storedLicense?.ActivationId,
-                    machineName = Environment.MachineName,
-                    userName = Environment.UserName,
-                    dataPath = wincajaPath,
-                    licenseFileExists = File.Exists(licensePath)
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[MACHINE-DEBUG] Error en diagnóstico: {ex.Message}");
-                return JsonConvert.SerializeObject(new
-                {
-                    success = false,
-                    error = ex.Message
                 });
             }
         }

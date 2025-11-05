@@ -629,42 +629,22 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
 
             try
             {
-                // 🔍 DEBUGGING: Punto de entrada
-                Console.WriteLine($"[SELF-DEBUG] ActivateLicense INICIADO para: {MaskLicenseKey(licenseKey)}");
-                Console.WriteLine($"[SELF-DEBUG] SSL proporcionado: {!string.IsNullOrEmpty(sslNumber)}");
-                
                 // NUEVO: Verificar requisitos SSL antes de activar
                 Console.WriteLine($"[DEBUG] ActivateLicense - Verificando requisitos SSL...");
                 var sslInfo = CheckSslRequirement(licenseKey, out var checkError);
                 
-                // 🔍 DEBUGGING: Resultado de SSL check
-                Console.WriteLine($"[SELF-DEBUG] CheckSslRequirement completado:");
-                Console.WriteLine($"[SELF-DEBUG] - checkError: {checkError ?? "null"}");
-                Console.WriteLine($"[SELF-DEBUG] - sslInfo.IsRequired: {sslInfo?.IsRequired}");
-                Console.WriteLine($"[SELF-DEBUG] - sslInfo.IsFirstActivation: {sslInfo?.IsFirstActivation}");
-                
                 if (!string.IsNullOrEmpty(checkError))
                 {
                     vresponse.Error = checkError;
-                    Console.WriteLine($"[SELF-DEBUG] 🚨 BLOQUEADO EN PUNTO #1: Error SSL check");
                     Console.WriteLine($"[ERROR] ActivateLicense - Error al verificar SSL: {checkError}");
                     return false;
                 }
-
-                // 🔍 DEBUGGING: Verificar condición de bloqueo SSL
-                bool wouldBlockSsl = sslInfo.IsFirstActivation && sslInfo.IsRequired && string.IsNullOrEmpty(sslNumber);
-                Console.WriteLine($"[SELF-DEBUG] Evaluando bloqueo SSL:");
-                Console.WriteLine($"[SELF-DEBUG] - IsFirstActivation: {sslInfo.IsFirstActivation}");
-                Console.WriteLine($"[SELF-DEBUG] - IsRequired: {sslInfo.IsRequired}");
-                Console.WriteLine($"[SELF-DEBUG] - sslNumber vacío: {string.IsNullOrEmpty(sslNumber)}");
-                Console.WriteLine($"[SELF-DEBUG] - ¿Bloquearía?: {wouldBlockSsl}");
 
                 // NUEVO: Si es primera activación de licencia migrada y NO se proporcionó SSL
                 if (sslInfo.IsFirstActivation && sslInfo.IsRequired && string.IsNullOrEmpty(sslNumber))
                 {
                     vresponse.Error = "SSL_REQUIRED_FOR_FIRST_ACTIVATION: Esta licencia requiere su número SSL para la primera activación. " +
                             "Por favor proporcione el número SSL que aparece en su documento de licencia.";
-                    Console.WriteLine($"[SELF-DEBUG] 🚨 BLOQUEADO EN PUNTO #2: SSL requerido pero no proporcionado");
                     Console.WriteLine($"[ERROR] Primera activación - SSL requerido pero no proporcionado");
                     vresponse.Message = sslInfo.Message;
                     return false;
@@ -677,22 +657,16 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     // No es error, el servidor lo manejará correctamente
                 }
 
-                // 🔍 DEBUGGING: Llegamos al punto de envío
-                Console.WriteLine($"[SELF-DEBUG] ✅ PASÓ TODAS LAS VALIDACIONES - Preparando envío al servidor");
-                
                 // Get hardware info
                 var hardwareInfo = _fingerprinter.GetSimplifiedHardwareInfo();
                 var fingerprint = _fingerprinter.GetHardwareFingerprint();
 
                 Console.WriteLine($"[DEBUG] ActivateLicense - Enviando request de activación{(string.IsNullOrEmpty(sslNumber) ? " sin SSL" : " con SSL")}");
-                Console.WriteLine($"[SELF-DEBUG] Hardware fingerprint: {fingerprint?.Substring(0, Math.Min(8, fingerprint.Length ?? 0))}...");
 
                 // Call activation API
                 using (var apiClient = new ApiClient())
                 {
-                    Console.WriteLine($"[SELF-DEBUG] 🌐 LLAMANDO AL SERVIDOR AHORA...");
                     var response = apiClient.ActivateLicense(licenseKey, hardwareInfo, sslNumber);
-                    Console.WriteLine($"[SELF-DEBUG] 🌐 RESPUESTA RECIBIDA: Success={response?.Success}, Error={response?.Error}");
 
                     if (!response.Success)
                     {

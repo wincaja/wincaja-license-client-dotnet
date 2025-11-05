@@ -629,9 +629,31 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
 
             try
             {
-                // 🔍 DEBUGGING: Punto de entrada
+                // 🔍 DEBUGGING: Verificar estado local ANTES de activar
+                var existingLicense = _storage.LoadLicense<StoredLicense>();
+                Console.WriteLine($"[SELF-DEBUG] ===== DIAGNÓSTICO DE MÁQUINA ESPECÍFICA =====");
                 Console.WriteLine($"[SELF-DEBUG] ActivateLicense INICIADO para: {MaskLicenseKey(licenseKey)}");
                 Console.WriteLine($"[SELF-DEBUG] SSL proporcionado: {!string.IsNullOrEmpty(sslNumber)}");
+                Console.WriteLine($"[SELF-DEBUG] ¿Existe licencia guardada localmente?: {existingLicense != null}");
+                
+                if (existingLicense != null)
+                {
+                    Console.WriteLine($"[SELF-DEBUG] 🚨 LICENCIA PREVIA ENCONTRADA:");
+                    Console.WriteLine($"[SELF-DEBUG] - LicenseKey guardada: {MaskLicenseKey(existingLicense.LicenseKey)}");
+                    Console.WriteLine($"[SELF-DEBUG] - ActivationId: {existingLicense.ActivationId}");
+                    Console.WriteLine($"[SELF-DEBUG] - Activada el: {existingLicense.ActivatedAt}");
+                    Console.WriteLine($"[SELF-DEBUG] - Última validación: {existingLicense.LastValidation}");
+                    Console.WriteLine($"[SELF-DEBUG] - ¿Es la misma licencia?: {existingLicense.LicenseKey == licenseKey}");
+                    
+                    if (existingLicense.LicenseKey == licenseKey)
+                    {
+                        Console.WriteLine($"[SELF-DEBUG] 🔍 INTENTANDO REACTIVAR LA MISMA LICENCIA");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[SELF-DEBUG] 🔍 INTENTANDO ACTIVAR LICENCIA DIFERENTE");
+                    }
+                }
                 
                 // NUEVO: Verificar requisitos SSL antes de activar
                 Console.WriteLine($"[DEBUG] ActivateLicense - Verificando requisitos SSL...");

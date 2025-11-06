@@ -48,12 +48,11 @@ namespace WincajaLicenseManager
                     return JsonConvert.SerializeObject(new
                     {
                         success = true,
-                        message = "License activated successfully",
+                        //message = "License activated successfully",
+                        message = response.Message?? "License activated successfully",
                         status = status.Status,
                         expiresAt = status.ExpiresAt?.ToString("yyyy-MM-dd"),
                         daysUntilExpiration = status.DaysUntilExpiration,
-                        
-                        
                     });
                 }
                 else

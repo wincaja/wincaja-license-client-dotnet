@@ -626,7 +626,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
         {
             vresponse = new ValidationResponse();
             vresponse.Error = null;
-
+     
             try
             {
                 // NUEVO: Verificar requisitos SSL antes de activar

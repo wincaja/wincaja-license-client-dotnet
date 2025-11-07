@@ -10,19 +10,6 @@ namespace WincajaLicenseManager.Core
 {
     internal class HardwareFingerprinter
     {
-        private static void LogToFile(string message)
-        {
-            try
-            {
-                var logPath = Path.Combine(Path.GetTempPath(), "WincajaLicense_Debug.log");
-                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                File.AppendAllText(logPath, $"[{timestamp}] {message}\r\n");
-            }
-            catch
-            {
-                // Ignore logging errors
-            }
-        }
         public class HardwareInfo
         {
             public CpuInfo Cpu { get; set; }
@@ -197,10 +184,10 @@ namespace WincajaLicenseManager.Core
                         biosInfo.Version = obj["Version"]?.ToString() ?? "";
                         biosInfo.SerialNumber = obj["SerialNumber"]?.ToString() ?? "";
                         
-                        LogToFile($"[DEBUG] BIOS Info - Vendor: {biosInfo.Vendor}, Version: {biosInfo.Version}, Serial: {biosInfo.SerialNumber}");
+                        Logger.LogDebug($"[DEBUG] BIOS Info - Vendor: {biosInfo.Vendor}, Version: {biosInfo.Version}, Serial: {biosInfo.SerialNumber}");
                         
                         var releaseDateStr = obj["ReleaseDate"]?.ToString();
-                        LogToFile($"[DEBUG] BIOS ReleaseDate raw: '{releaseDateStr}'");
+                        Logger.LogDebug($"[DEBUG] BIOS ReleaseDate raw: '{releaseDateStr}'");
                         
                         if (!string.IsNullOrEmpty(releaseDateStr) && releaseDateStr.Length >= 8)
                         {
@@ -210,17 +197,17 @@ namespace WincajaLicenseManager.Core
                                 var month = int.Parse(releaseDateStr.Substring(4, 2));
                                 var day = int.Parse(releaseDateStr.Substring(6, 2));
                                 biosInfo.ReleaseDate = new DateTime(year, month, day);
-                                LogToFile($"[DEBUG] BIOS ReleaseDate parsed: {biosInfo.ReleaseDate}");
+                                Logger.LogDebug($"[DEBUG] BIOS ReleaseDate parsed: {biosInfo.ReleaseDate}");
                             }
                             catch (Exception ex)
                             {
-                                LogToFile($"[DEBUG] BIOS ReleaseDate parse failed: {ex.Message}");
+                                Logger.LogDebug($"[DEBUG] BIOS ReleaseDate parse failed: {ex.Message}");
                                 biosInfo.ReleaseDate = null;
                             }
                         }
                         else
                         {
-                            LogToFile($"[DEBUG] BIOS ReleaseDate is empty or invalid format");
+                            Logger.LogDebug($"[DEBUG] BIOS ReleaseDate is empty or invalid format");
                             biosInfo.ReleaseDate = null;
                         }
                         break;
@@ -229,7 +216,7 @@ namespace WincajaLicenseManager.Core
             }
             catch (Exception ex)
             {
-                LogToFile($"[ERROR] GetBiosInfo failed: {ex.Message}");
+                Logger.LogDebug($"[ERROR] GetBiosInfo failed: {ex.Message}");
                 // Return empty biosInfo instead of throwing
                 biosInfo.Vendor = "";
                 biosInfo.Version = "";
@@ -237,7 +224,7 @@ namespace WincajaLicenseManager.Core
                 biosInfo.ReleaseDate = null;
             }
 
-            LogToFile($"[DEBUG] Final BIOS Info - Vendor: '{biosInfo.Vendor}', Version: '{biosInfo.Version}', Serial: '{biosInfo.SerialNumber}', ReleaseDate: {biosInfo.ReleaseDate}");
+            Logger.LogDebug($"[DEBUG] Final BIOS Info - Vendor: '{biosInfo.Vendor}', Version: '{biosInfo.Version}', Serial: '{biosInfo.SerialNumber}', ReleaseDate: {biosInfo.ReleaseDate}");
             return biosInfo;
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using WincajaLicenseManager.Models;
@@ -7,6 +8,20 @@ namespace WincajaLicenseManager.Core
 {
     internal class LicenseValidator
     {
+        private static void Console.WriteLine(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(Path.GetTempPath(), "WincajaLicense_Debug.log");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                File.AppendAllText(logPath, $"[{timestamp}] {message}\r\n");
+            }
+            catch
+            {
+                // Ignore logging errors
+            }
+        }
+
         private readonly SecureStorage _storage;
         private readonly HardwareFingerprinter _fingerprinter;
         private readonly int _gracePeriodDays;
@@ -629,6 +644,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
      
             try
             {
+                LogToFile($"[DEBUG] ActivateLicense - INICIO - LicenseKey: {MaskLicenseKey(licenseKey)}");
                 // NUEVO: Verificar requisitos SSL antes de activar
                 Console.WriteLine($"[DEBUG] ActivateLicense - Verificando requisitos SSL...");
                 var sslInfo = CheckSslRequirement(licenseKey, out var checkError);
@@ -658,8 +674,12 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 }
 
                 // Get hardware info
+                LogToFile($"[DEBUG] ActivateLicense - Obteniendo información del hardware...");
                 var hardwareInfo = _fingerprinter.GetSimplifiedHardwareInfo();
+                LogToFile($"[DEBUG] ActivateLicense - Hardware info obtenido correctamente");
+                
                 var fingerprint = _fingerprinter.GetHardwareFingerprint();
+                LogToFile($"[DEBUG] ActivateLicense - Hardware fingerprint generado: {fingerprint?.Substring(0, 8)}...");
 
                 Console.WriteLine($"[DEBUG] ActivateLicense - Enviando request de activación{(string.IsNullOrEmpty(sslNumber) ? " sin SSL" : " con SSL")}");
 
@@ -743,6 +763,8 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
             catch (Exception ex)
             {
                 vresponse.Error = $"Activation error: {ex.Message}";
+                LogToFile($"[ERROR] ActivateLicense - Exception: {ex.Message}");
+                LogToFile($"[ERROR] ActivateLicense - StackTrace: {ex.StackTrace}");
                 Console.WriteLine($"[ERROR] ActivateLicense - Exception: {ex.Message}");
                 return false;
             }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Management;
 using System.Security.Cryptography;
@@ -9,6 +10,19 @@ namespace WincajaLicenseManager.Core
 {
     internal class HardwareFingerprinter
     {
+        private static void LogToFile(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(Path.GetTempPath(), "WincajaLicense_Debug.log");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                File.AppendAllText(logPath, $"[{timestamp}] {message}\r\n");
+            }
+            catch
+            {
+                // Ignore logging errors
+            }
+        }
         public class HardwareInfo
         {
             public CpuInfo Cpu { get; set; }
@@ -173,33 +187,57 @@ namespace WincajaLicenseManager.Core
         {
             var biosInfo = new BiosInfo();
 
-            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_BIOS"))
+            try
             {
-                foreach (var obj in searcher.Get())
+                using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_BIOS"))
                 {
-                    biosInfo.Vendor = obj["Manufacturer"]?.ToString() ?? "";
-                    biosInfo.Version = obj["Version"]?.ToString() ?? "";
-                    biosInfo.SerialNumber = obj["SerialNumber"]?.ToString() ?? "";
-                    
-                    var releaseDateStr = obj["ReleaseDate"]?.ToString();
-                    if (!string.IsNullOrEmpty(releaseDateStr) && releaseDateStr.Length >= 8)
+                    foreach (var obj in searcher.Get())
                     {
-                        try
+                        biosInfo.Vendor = obj["Manufacturer"]?.ToString() ?? "";
+                        biosInfo.Version = obj["Version"]?.ToString() ?? "";
+                        biosInfo.SerialNumber = obj["SerialNumber"]?.ToString() ?? "";
+                        
+                        LogToFile($"[DEBUG] BIOS Info - Vendor: {biosInfo.Vendor}, Version: {biosInfo.Version}, Serial: {biosInfo.SerialNumber}");
+                        
+                        var releaseDateStr = obj["ReleaseDate"]?.ToString();
+                        LogToFile($"[DEBUG] BIOS ReleaseDate raw: '{releaseDateStr}'");
+                        
+                        if (!string.IsNullOrEmpty(releaseDateStr) && releaseDateStr.Length >= 8)
                         {
-                            var year = int.Parse(releaseDateStr.Substring(0, 4));
-                            var month = int.Parse(releaseDateStr.Substring(4, 2));
-                            var day = int.Parse(releaseDateStr.Substring(6, 2));
-                            biosInfo.ReleaseDate = new DateTime(year, month, day);
+                            try
+                            {
+                                var year = int.Parse(releaseDateStr.Substring(0, 4));
+                                var month = int.Parse(releaseDateStr.Substring(4, 2));
+                                var day = int.Parse(releaseDateStr.Substring(6, 2));
+                                biosInfo.ReleaseDate = new DateTime(year, month, day);
+                                LogToFile($"[DEBUG] BIOS ReleaseDate parsed: {biosInfo.ReleaseDate}");
+                            }
+                            catch (Exception ex)
+                            {
+                                LogToFile($"[DEBUG] BIOS ReleaseDate parse failed: {ex.Message}");
+                                biosInfo.ReleaseDate = null;
+                            }
                         }
-                        catch
+                        else
                         {
+                            LogToFile($"[DEBUG] BIOS ReleaseDate is empty or invalid format");
                             biosInfo.ReleaseDate = null;
                         }
+                        break;
                     }
-                    break;
                 }
             }
+            catch (Exception ex)
+            {
+                LogToFile($"[ERROR] GetBiosInfo failed: {ex.Message}");
+                // Return empty biosInfo instead of throwing
+                biosInfo.Vendor = "";
+                biosInfo.Version = "";
+                biosInfo.SerialNumber = "";
+                biosInfo.ReleaseDate = null;
+            }
 
+            LogToFile($"[DEBUG] Final BIOS Info - Vendor: '{biosInfo.Vendor}', Version: '{biosInfo.Version}', Serial: '{biosInfo.SerialNumber}', ReleaseDate: {biosInfo.ReleaseDate}");
             return biosInfo;
         }
 

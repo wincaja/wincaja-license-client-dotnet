@@ -668,12 +668,15 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 var fingerprint = _fingerprinter.GetHardwareFingerprint();
                 Logger.LogDebug($"[DEBUG] ActivateLicense - Hardware fingerprint generado: {fingerprint?.Substring(0, 8)}...");
 
-                Console.WriteLine($"[DEBUG] ActivateLicense - Enviando request de activación{(string.IsNullOrEmpty(sslNumber) ? " sin SSL" : " con SSL")}");
+                Logger.LogDebug($"ActivateLicense - Enviando request de activación{(string.IsNullOrEmpty(sslNumber) ? " sin SSL" : " con SSL")}");
 
                 // Call activation API
+                Logger.LogDebug($"ActivateLicense - Creando ApiClient...");
                 using (var apiClient = new ApiClient())
                 {
+                    Logger.LogDebug($"ActivateLicense - Llamando apiClient.ActivateLicense...");
                     var response = apiClient.ActivateLicense(licenseKey, hardwareInfo, sslNumber);
+                    Logger.LogDebug($"ActivateLicense - Respuesta recibida: Success={response?.Success}");
 
                     if (!response.Success)
                     {

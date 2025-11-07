@@ -54,6 +54,7 @@ namespace WincajaLicenseManager.Core
             public string Vendor { get; set; }
             public string Version { get; set; }
             public DateTime? ReleaseDate { get; set; }
+            public string SerialNumber { get; set; }
         }
 
         public class SystemInfo
@@ -178,6 +179,7 @@ namespace WincajaLicenseManager.Core
                 {
                     biosInfo.Vendor = obj["Manufacturer"]?.ToString() ?? "";
                     biosInfo.Version = obj["Version"]?.ToString() ?? "";
+                    biosInfo.SerialNumber = obj["SerialNumber"]?.ToString() ?? "";
                     
                     var releaseDateStr = obj["ReleaseDate"]?.ToString();
                     if (!string.IsNullOrEmpty(releaseDateStr) && releaseDateStr.Length >= 8)
@@ -339,7 +341,8 @@ namespace WincajaLicenseManager.Core
                 {
                     ["vendor"] = info.Bios.Vendor,
                     ["version"] = info.Bios.Version,
-                    ["releaseDate"] = info.Bios.ReleaseDate?.ToString("yyyy-MM-dd")
+                    ["releaseDate"] = info.Bios.ReleaseDate?.ToString("yyyy-MM-dd"),
+                    ["serialNumber"] = info.Bios.SerialNumber
                 };
             }
 

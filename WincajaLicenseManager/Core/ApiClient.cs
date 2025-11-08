@@ -24,6 +24,7 @@ namespace WincajaLicenseManager.Core
         {
             try
             {
+                Logger.LogDebug($"ApiClient.ActivateLicenseAsync - INICIO");
                 var request = new ActivationRequest
                 {
                     LicenseKey = licenseKey,
@@ -101,14 +102,25 @@ namespace WincajaLicenseManager.Core
             // Synchronous wrapper for COM compatibility
             try
             {
+                Logger.LogDebug($"ApiClient.ActivateLicense - INICIO");
                 var task = Task.Run(async () => await ActivateLicenseAsync(licenseKey, hardwareInfo, sslNumber));
-                return task.Result;
+                Logger.LogDebug($"ApiClient.ActivateLicense - Task creado, esperando resultado...");
+                var result = task.Result;
+                Logger.LogDebug($"ApiClient.ActivateLicense - Task completado: Success={result?.Success}");
+                return result;
             }
             catch (AggregateException ex)
             {
                 var innerEx = ex.InnerException;
                 var errorMessage = innerEx?.Message ?? ex.Message ?? "Activation failed";
+                Logger.LogDebug($"ApiClient.ActivateLicense - AggregateException: {errorMessage}");
+                Logger.LogDebug($"ApiClient.ActivateLicense - InnerException: {innerEx?.GetType().Name}: {innerEx?.Message}");
                 return new ActivationResponse { Success = false, Error = $"Activation error: {errorMessage}" };
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug($"ApiClient.ActivateLicense - Exception: {ex.GetType().Name}: {ex.Message}");
+                return new ActivationResponse { Success = false, Error = $"Activation error: {ex.Message}" };
             }
         }
 

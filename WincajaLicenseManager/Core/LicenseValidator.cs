@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using WincajaLicenseManager.Models;
@@ -7,6 +8,7 @@ namespace WincajaLicenseManager.Core
 {
     internal class LicenseValidator
     {
+
         private readonly SecureStorage _storage;
         private readonly HardwareFingerprinter _fingerprinter;
         private readonly int _gracePeriodDays;
@@ -629,6 +631,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
      
             try
             {
+                Logger.LogDebug($"[DEBUG] ActivateLicense - INICIO - LicenseKey: {MaskLicenseKey(licenseKey)}");
                 // NUEVO: Verificar requisitos SSL antes de activar
                 Console.WriteLine($"[DEBUG] ActivateLicense - Verificando requisitos SSL...");
                 var sslInfo = CheckSslRequirement(licenseKey, out var checkError);
@@ -658,15 +661,22 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                 }
 
                 // Get hardware info
+                Logger.LogDebug($"[DEBUG] ActivateLicense - Obteniendo información del hardware...");
                 var hardwareInfo = _fingerprinter.GetSimplifiedHardwareInfo();
+                Logger.LogDebug($"[DEBUG] ActivateLicense - Hardware info obtenido correctamente");
+                
                 var fingerprint = _fingerprinter.GetHardwareFingerprint();
+                Logger.LogDebug($"[DEBUG] ActivateLicense - Hardware fingerprint generado: {fingerprint?.Substring(0, 8)}...");
 
-                Console.WriteLine($"[DEBUG] ActivateLicense - Enviando request de activación{(string.IsNullOrEmpty(sslNumber) ? " sin SSL" : " con SSL")}");
+                Logger.LogDebug($"ActivateLicense - Enviando request de activación{(string.IsNullOrEmpty(sslNumber) ? " sin SSL" : " con SSL")}");
 
                 // Call activation API
+                Logger.LogDebug($"ActivateLicense - Creando ApiClient...");
                 using (var apiClient = new ApiClient())
                 {
+                    Logger.LogDebug($"ActivateLicense - Llamando apiClient.ActivateLicense...");
                     var response = apiClient.ActivateLicense(licenseKey, hardwareInfo, sslNumber);
+                    Logger.LogDebug($"ActivateLicense - Respuesta recibida: Success={response?.Success}");
 
                     if (!response.Success)
                     {
@@ -743,6 +753,8 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
             catch (Exception ex)
             {
                 vresponse.Error = $"Activation error: {ex.Message}";
+                Logger.LogDebug($"[ERROR] ActivateLicense - Exception: {ex.Message}");
+                Logger.LogDebug($"[ERROR] ActivateLicense - StackTrace: {ex.StackTrace}");
                 Console.WriteLine($"[ERROR] ActivateLicense - Exception: {ex.Message}");
                 return false;
             }

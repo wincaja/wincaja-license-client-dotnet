@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Management;
 using System.Security.Cryptography;
@@ -54,6 +55,7 @@ namespace WincajaLicenseManager.Core
             public string Vendor { get; set; }
             public string Version { get; set; }
             public DateTime? ReleaseDate { get; set; }
+            public string SerialNumber { get; set; }
         }
 
         public class SystemInfo
@@ -172,32 +174,57 @@ namespace WincajaLicenseManager.Core
         {
             var biosInfo = new BiosInfo();
 
-            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_BIOS"))
+            try
             {
-                foreach (var obj in searcher.Get())
+                using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_BIOS"))
                 {
-                    biosInfo.Vendor = obj["Manufacturer"]?.ToString() ?? "";
-                    biosInfo.Version = obj["Version"]?.ToString() ?? "";
-                    
-                    var releaseDateStr = obj["ReleaseDate"]?.ToString();
-                    if (!string.IsNullOrEmpty(releaseDateStr) && releaseDateStr.Length >= 8)
+                    foreach (var obj in searcher.Get())
                     {
-                        try
+                        biosInfo.Vendor = obj["Manufacturer"]?.ToString() ?? "";
+                        biosInfo.Version = obj["Version"]?.ToString() ?? "";
+                        biosInfo.SerialNumber = obj["SerialNumber"]?.ToString() ?? "";
+                        
+                        Logger.LogDebug($"[DEBUG] BIOS Info - Vendor: {biosInfo.Vendor}, Version: {biosInfo.Version}, Serial: {biosInfo.SerialNumber}");
+                        
+                        var releaseDateStr = obj["ReleaseDate"]?.ToString();
+                        Logger.LogDebug($"[DEBUG] BIOS ReleaseDate raw: '{releaseDateStr}'");
+                        
+                        if (!string.IsNullOrEmpty(releaseDateStr) && releaseDateStr.Length >= 8)
                         {
-                            var year = int.Parse(releaseDateStr.Substring(0, 4));
-                            var month = int.Parse(releaseDateStr.Substring(4, 2));
-                            var day = int.Parse(releaseDateStr.Substring(6, 2));
-                            biosInfo.ReleaseDate = new DateTime(year, month, day);
+                            try
+                            {
+                                var year = int.Parse(releaseDateStr.Substring(0, 4));
+                                var month = int.Parse(releaseDateStr.Substring(4, 2));
+                                var day = int.Parse(releaseDateStr.Substring(6, 2));
+                                biosInfo.ReleaseDate = new DateTime(year, month, day);
+                                Logger.LogDebug($"[DEBUG] BIOS ReleaseDate parsed: {biosInfo.ReleaseDate}");
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogDebug($"[DEBUG] BIOS ReleaseDate parse failed: {ex.Message}");
+                                biosInfo.ReleaseDate = null;
+                            }
                         }
-                        catch
+                        else
                         {
+                            Logger.LogDebug($"[DEBUG] BIOS ReleaseDate is empty or invalid format");
                             biosInfo.ReleaseDate = null;
                         }
+                        break;
                     }
-                    break;
                 }
             }
+            catch (Exception ex)
+            {
+                Logger.LogDebug($"[ERROR] GetBiosInfo failed: {ex.Message}");
+                // Return empty biosInfo instead of throwing
+                biosInfo.Vendor = "";
+                biosInfo.Version = "";
+                biosInfo.SerialNumber = "";
+                biosInfo.ReleaseDate = null;
+            }
 
+            Logger.LogDebug($"[DEBUG] Final BIOS Info - Vendor: '{biosInfo.Vendor}', Version: '{biosInfo.Version}', Serial: '{biosInfo.SerialNumber}', ReleaseDate: {biosInfo.ReleaseDate}");
             return biosInfo;
         }
 
@@ -339,7 +366,8 @@ namespace WincajaLicenseManager.Core
                 {
                     ["vendor"] = info.Bios.Vendor,
                     ["version"] = info.Bios.Version,
-                    ["releaseDate"] = info.Bios.ReleaseDate?.ToString("yyyy-MM-dd")
+                    ["releaseDate"] = info.Bios.ReleaseDate?.ToString("yyyy-MM-dd"),
+                    ["serialNumber"] = info.Bios.SerialNumber
                 };
             }
 

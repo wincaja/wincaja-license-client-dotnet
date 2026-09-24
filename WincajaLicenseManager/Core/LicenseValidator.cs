@@ -232,7 +232,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Making HTTP call to server...");
                     Console.WriteLine($"[INFO] ForceOnlineValidation() - SSL no es enviado (API v1.1: ssl.used maneja reactivaciones)");
                     // ACTUALIZADO: No enviar SSL (obsoleto con API v1.1)
-                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId);
+                    var serverResult = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fp, storedLicense.ActivationId, null, _fingerprinter.GetSimplifiedHardwareInfo());
                     Console.WriteLine($"[DEBUG] ForceOnlineValidation() - Server response received: {serverResult != null}");
 
                     var status = new LicenseStatus
@@ -494,7 +494,7 @@ xQ5Qa2X3w6xZgY2xZgY3Lz8xQZ2hxFL5h3Y2j8z7xQZYRxQ5Qa2X3w6xZgY2xQZ
                     var fp = !string.IsNullOrWhiteSpace(license.ServerHardwareFingerprint) ? license.ServerHardwareFingerprint : license.HardwareFingerprint;
                     Console.WriteLine($"[INFO] PerformOnlineValidationHardware - SSL no es enviado (API v1.1: ssl.used maneja reactivaciones)");
                     // ACTUALIZADO: No enviar SSL (obsoleto con API v1.1)
-                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId);
+                    return apiClient.ValidateLicenseHardware(license.LicenseKey, fp, license.ActivationId, null, _fingerprinter.GetSimplifiedHardwareInfo());
                 }
             }
             catch

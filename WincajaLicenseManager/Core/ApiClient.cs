@@ -241,7 +241,7 @@ namespace WincajaLicenseManager.Core
             }
         }
 
-        public async Task<ValidationResponse> ValidateLicenseHardwareAsync(string licenseKey, string hardwareFingerprint, string activationId = null, string sslNumber = null)
+        public async Task<ValidationResponse> ValidateLicenseHardwareAsync(string licenseKey, string hardwareFingerprint, string activationId = null, string sslNumber = null, Dictionary<string, object> hardwareInfo = null)
         {
             try
             {
@@ -253,6 +253,13 @@ namespace WincajaLicenseManager.Core
                     ["hardwareFingerprint"] = hardwareFingerprint,
                     ["activationId"] = activationId
                 };
+
+                // Hardware leído en este momento: la huella y el activationId vienen de
+                // license.dat y un disco clonado los copia; disco y MAC física no.
+                if (hardwareInfo != null)
+                {
+                    request["hardwareInfo"] = hardwareInfo;
+                }
 
                 // Solo agregar sslNumber si NO es null o vacío
                 if (!string.IsNullOrEmpty(sslNumber))
@@ -382,11 +389,11 @@ namespace WincajaLicenseManager.Core
             }
         }
 
-        public ValidationResponse ValidateLicenseHardware(string licenseKey, string hardwareFingerprint, string activationId = null, string sslNumber = null)
+        public ValidationResponse ValidateLicenseHardware(string licenseKey, string hardwareFingerprint, string activationId = null, string sslNumber = null, Dictionary<string, object> hardwareInfo = null)
         {
             try
             {
-                var task = Task.Run(async () => await ValidateLicenseHardwareAsync(licenseKey, hardwareFingerprint, activationId, sslNumber));
+                var task = Task.Run(async () => await ValidateLicenseHardwareAsync(licenseKey, hardwareFingerprint, activationId, sslNumber, hardwareInfo));
                 return task.Result;
             }
             catch (AggregateException ex)

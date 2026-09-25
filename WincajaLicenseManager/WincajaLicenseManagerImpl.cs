@@ -273,7 +273,7 @@ namespace WincajaLicenseManager
                 // Call validation API to check SSL requirement
                 using (var apiClient = new ApiClient())
                 {
-                    var response = apiClient.ValidateLicenseHardware(licenseKey, fingerprint, null, null);
+                    var response = apiClient.ValidateLicenseHardware(licenseKey, fingerprint, null, null, hardwareInfo);
 
                     if (response != null)
                     {
@@ -343,7 +343,7 @@ namespace WincajaLicenseManager
                 // Call validation API with SSL
                 using (var apiClient = new ApiClient())
                 {
-                    var response = apiClient.ValidateLicenseHardware(licenseKey, fingerprint, null, sslNumber);
+                    var response = apiClient.ValidateLicenseHardware(licenseKey, fingerprint, null, sslNumber, hardwareInfo);
 
                     if (response != null)
                     {
@@ -425,7 +425,7 @@ namespace WincajaLicenseManager
                 // Call validation API to get current SSL info
                 using (var apiClient = new ApiClient())
                 {
-                    var response = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fingerprint, storedLicense.ActivationId, null);
+                    var response = apiClient.ValidateLicenseHardware(storedLicense.LicenseKey, fingerprint, storedLicense.ActivationId, null, hardwareInfo);
 
                     if (response != null && response.Ssl != null)
                     {
